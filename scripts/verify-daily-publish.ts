@@ -9,21 +9,19 @@ async function run() {
     const date = new Date().toISOString().slice(0, 10)
     const start = `${date}T00:00:00.000Z`
     const end = `${date}T23:59:59.999Z`
-    const url = new URL('/api/articles', baseURL)
-    url.searchParams.set('where[and][0][aiGenerated][equals]', 'true')
-    url.searchParams.set('where[and][1][status][equals]', 'published')
-    url.searchParams.set('where[and][2][publishedAt][greater_than_equal]', start)
-    url.searchParams.set('where[and][3][publishedAt][less_than_equal]', end)
-    url.searchParams.set('limit', '10')
-    url.searchParams.set('sort', '-publishedAt')
-    const response = await fetch(url)
-    if (!response.ok) throw new Error(`Production articles API returned ${response.status}`)
-    const result = await response.json() as { docs: Array<Record<string, any>> }
-    const verification = { date, publishedCount: result.docs.length, articles: result.docs.map((article) => ({ id: article.id, slug: article.slug, title: article.title, publishedAt: article.publishedAt, qualityScore: article.qualityScore, model: article.aiModel })) }
+    const automationSecret = process.env.AUTOMATION_SECRET
+    if (!automationSecret) throw new Error('AUTOMATION_SECRET is required for remote verification')
+    const response = await fetch(new URL('/api/automation/context', baseURL), {
+      headers: { 'x-automation-secret': automationSecret },
+    })
+    if (!response.ok) throw new Error(`Automation context API returned ${response.status}`)
+    const context = await response.json() as { articles: Array<Record<string, any>> }
+    const articles = context.articles.filter((article) => article.aiGenerated === true && article.publishedAt >= start && article.publishedAt <= end)
+    const verification = { date, publishedCount: articles.length, articles: articles.map((article) => ({ id: article.id, slug: article.slug, title: article.title, publishedAt: article.publishedAt, qualityScore: article.qualityScore, model: article.aiModel })) }
     await fs.mkdir(path.resolve('artifacts'), { recursive: true })
     await fs.writeFile(path.resolve('artifacts/daily-publish-verification.json'), `${JSON.stringify(verification, null, 2)}\n`, 'utf8')
     console.log(JSON.stringify({ event: 'daily-publish-verified', ...verification }))
-    if (result.docs.length !== 1) throw new Error(`Expected exactly one AI article for ${date}, found ${result.docs.length}`)
+    if (articles.length !== 1) throw new Error(`Expected exactly one AI article for ${date}, found ${articles.length}`)
     process.exit(0)
   }
   const payload = await getPayload({ config })
