@@ -1,5 +1,5 @@
 import { buildConfig } from 'payload';
-import { sqlite } from '@payloadcms/db-sqlite';
+import { sqlite } from 'payload';
 import { lexicalEditor } from '@payloadcms/richtext-lexical';
 import { seoPlugin } from '@payloadcms/plugin-seo';
 import path from 'path';

@@ -62,7 +62,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title: data.geoContent?.localizedName || data.name,
     description: data.shortDescription,
     alternates: {
-      canonical: `https://affiliate.example.com/products/${slug}/${region}`,
+      canonical: `https://store.2bkf.com/products/${slug}/${region}`,
     },
     openGraph: {
       title: data.geoContent?.localizedName || data.name,

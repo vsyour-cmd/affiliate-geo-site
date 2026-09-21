@@ -73,7 +73,7 @@ async function generateProductHTML(product: any, region: any): Promise<string> {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${geoContent?.localizedName || product.name} - ${region.name}</title>
   <meta name="description" content="${product.shortDescription}">
-  <meta name="canonical" href="https://affiliate.example.com/products/${product.slug}/${region.code}">
+  <meta name="canonical" href="https://store.2bkf.com/products/${product.slug}/${region.code}">
   
   <!-- Open Graph -->
   <meta property="og:title" content="${geoContent?.localizedName || product.name}">
@@ -87,7 +87,7 @@ async function generateProductHTML(product: any, region: any): Promise<string> {
   <meta name="twitter:description" content="${product.shortDescription}">
   
   <!-- Hreflang -->
-  <link rel="alternate" hreflang="x-default" href="https://affiliate.example.com/products/${product.slug}/${region.code}">
+  <link rel="alternate" hreflang="x-default" href="https://store.2bkf.com/products/${product.slug}/${region.code}">
   
   <!-- Structured Data -->
   <script type="application/ld+json">

@@ -25,7 +25,7 @@ export async function GET() {
     limit: 1000,
   });
 
-  const baseUrl = 'https://affiliate.example.com';
+  const baseUrl = 'https://store.2bkf.com';
 
   const urls = [
     {
