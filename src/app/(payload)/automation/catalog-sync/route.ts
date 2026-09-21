@@ -88,7 +88,7 @@ export async function POST(request: NextRequest) {
       created += 1
     }
     } catch (error) {
-      return NextResponse.json({ error: `Offer ${offer.id}/${offer.productId}: ${error instanceof Error ? error.message : String(error)}` }, { status: 422 })
+      return NextResponse.json({ error: `Offer ${offer.id}/${offer.productId}: ${error instanceof Error ? error.message : String(error)}` }, { status: 503 })
     }
   }
   return NextResponse.json({ created, updated, unchanged, processed: body.offers.length })
