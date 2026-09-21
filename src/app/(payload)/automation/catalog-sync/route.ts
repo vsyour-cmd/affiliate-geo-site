@@ -49,6 +49,7 @@ export async function POST(request: NextRequest) {
   let unchanged = 0
 
   for (const offer of body.offers) {
+    try {
     if (!/^\d+$/.test(String(offer.productId)) || !offer.id || !offer.label || !offer.promoLink.includes(`/redir/${offer.productId}/`)) {
       return NextResponse.json({ error: `Invalid offer ${offer.id || 'unknown'}` }, { status: 400 })
     }
@@ -89,6 +90,9 @@ export async function POST(request: NextRequest) {
     } else {
       await payload.create({ collection: 'products', data, overrideAccess: true })
       created += 1
+    }
+    } catch (error) {
+      return NextResponse.json({ error: `Offer ${offer.id}/${offer.productId}: ${error instanceof Error ? error.message : String(error)}` }, { status: 422 })
     }
   }
   return NextResponse.json({ created, updated, unchanged, processed: body.offers.length })
