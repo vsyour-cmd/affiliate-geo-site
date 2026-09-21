@@ -11,8 +11,12 @@ async function run() {
     const end = `${date}T23:59:59.999Z`
     const automationSecret = process.env.AUTOMATION_SECRET
     if (!automationSecret) throw new Error('AUTOMATION_SECRET is required for remote verification')
-    const response = await fetch(new URL('/api/automation/context', baseURL), {
-      headers: { 'x-automation-secret': automationSecret },
+    const response = await fetch(new URL('/automation/context', baseURL), {
+      headers: {
+        'accept': 'application/json',
+        'user-agent': 'Mozilla/5.0 (compatible; AffiliateGeoPublisher/1.0)',
+        'x-automation-secret': automationSecret,
+      },
     })
     if (!response.ok) throw new Error(`Automation context API returned ${response.status}`)
     const context = await response.json() as { articles: Array<Record<string, any>> }

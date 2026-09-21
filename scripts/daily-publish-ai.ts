@@ -117,10 +117,15 @@ async function runRemote() {
   const baseURL = process.env.PUBLISH_API_URL?.replace(/\/$/, '')
   const automationSecret = process.env.AUTOMATION_SECRET
   if (!baseURL || !automationSecret) throw new Error('PUBLISH_API_URL and AUTOMATION_SECRET are required for remote publishing')
+  const automationHeaders = {
+    'accept': 'application/json',
+    'user-agent': 'Mozilla/5.0 (compatible; AffiliateGeoPublisher/1.0)',
+    'x-automation-secret': automationSecret,
+  }
   const startedAt = new Date()
   const date = startedAt.toISOString().slice(0, 10)
-  const contextResponse = await fetch(new URL('/api/automation/context', baseURL), {
-    headers: { 'x-automation-secret': automationSecret },
+  const contextResponse = await fetch(new URL('/automation/context', baseURL), {
+    headers: automationHeaders,
   })
   if (!contextResponse.ok) throw new Error(`Automation context API returned ${contextResponse.status}`)
   const context = await contextResponse.json() as {
@@ -156,8 +161,8 @@ async function runRemote() {
         continue
       }
       const slug = `${slugify(article.title) || `article-${date}`}-${date}`
-      const publishResponse = await fetch(`${baseURL}/api/automation/publish`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json', 'x-automation-secret': automationSecret },
+      const publishResponse = await fetch(`${baseURL}/automation/publish`, {
+        method: 'POST', headers: { ...automationHeaders, 'Content-Type': 'application/json' },
         body: JSON.stringify({ title: article.title, slug, excerpt: article.excerpt, content: richText(article), productId: product.id, categoryId: typeof product.category === 'object' ? product.category.id : product.category, automationKey, model, promptVersion, qualityScore: lastQuality.score, qualityNotes: lastQuality.notes, sourceSnapshot: snapshot, publishedAt: startedAt.toISOString() }),
         signal: AbortSignal.timeout(60_000),
       })
