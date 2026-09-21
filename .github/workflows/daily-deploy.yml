@@ -1,0 +1,56 @@
+name: Daily Build & Deploy to Cloudflare Pages
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    # Run daily at 00:00 UTC
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run database migrations
+        run: npm run build
+        env:
+          PAYLOAD_SECRET: ${{ secrets.PAYLOAD_SECRET }}
+          PAYLOAD_CONFIG_PATH: ./payload.config.ts
+
+      - name: Generate static pages
+        run: npm run generate:static
+        env:
+          PAYLOAD_SECRET: ${{ secrets.PAYLOAD_SECRET }}
+          PAYLOAD_CONFIG_PATH: ./payload.config.ts
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/pages-action@v1
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          projectName: affiliate-geo-site
+          directory: dist
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Notify deployment status
+        if: always()
+        run: |
+          echo "Deployment to Cloudflare Pages completed."
+          echo "Project: affiliate-geo-site"
+          echo "Branch: ${{ github.ref_name }}"
+          echo "Commit: ${{ github.sha }}"
