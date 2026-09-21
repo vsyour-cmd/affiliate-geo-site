@@ -130,9 +130,15 @@ async function runRemote() {
   if (!contextResponse.ok) throw new Error(`Automation context API returned ${contextResponse.status}`)
   const context = await contextResponse.json() as {
     products: Array<Record<string, any>>
-    articles: Array<{ id: string | number; slug: string; automationKey?: string; title: string }>
+    articles: Array<{ id: string | number; slug: string; automationKey?: string; title: string; aiGenerated?: boolean; publishedAt?: string }>
   }
   if (!context.products.length) throw new Error('No active products are available for article generation')
+  const publishedToday = context.articles.find((article) => article.aiGenerated === true && article.publishedAt?.startsWith(date))
+  if (publishedToday) {
+    await writeReport({ status: 'skipped', reason: 'daily-cap-reached', date, articleId: publishedToday.id, slug: publishedToday.slug })
+    console.log(JSON.stringify({ event: 'daily-publish-skipped', reason: 'daily-cap-reached', articleId: publishedToday.id }))
+    return
+  }
   const product = context.products[Math.floor(startedAt.getTime() / 86_400_000) % context.products.length]
   const automationKey = `${date}:${product.id}`
   const existing = context.articles.find((article) => article.automationKey === automationKey)
