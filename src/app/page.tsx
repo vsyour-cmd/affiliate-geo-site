@@ -1,57 +1,48 @@
-import { notFound } from 'next/navigation';
-import { getPayload } from 'payload';
-import config from '@/payload.config';
-
-async function getProducts() {
-  const payload = await getPayload({ config });
-  const response = await payload.find({
-    collection: 'products',
-    where: {
-      status: { equals: 'active' },
-    },
-    limit: 50,
-    sort: '-lastUpdated',
-  });
-  return response.docs;
-}
+import { Metadata } from 'next';
+import Link from 'next/link';
 
 export const revalidate = 3600;
 
-export default async function HomePage() {
-  const products = await getProducts();
-
+export default function HomePage() {
   return (
     <main className="container">
-      <h1 style={{ fontSize: '2.5rem', fontWeight: 'bold', margin: '2rem 0 1rem' }}>
-        Featured Products
-      </h1>
-      <p style={{ fontSize: '1.25rem', color: '#6b7280', marginBottom: '2rem' }}>
-        Discover the best products tailored to your region
-      </p>
+      <div style={{ textAlign: 'center', padding: '4rem 20px' }}>
+        <h1 style={{ fontSize: '3rem', fontWeight: 'bold', marginBottom: '1rem' }}>
+          Affiliate Marketplace
+        </h1>
+        <p style={{ fontSize: '1.25rem', color: '#6b7280', marginBottom: '2rem', maxWidth: '600px', margin: '0 auto 2rem' }}>
+          Discover the best products tailored to your region. We curate top affiliate products with localized pricing and content.
+        </p>
+        <Link href="/products" style={{
+          display: 'inline-block',
+          padding: '0.75rem 1.5rem',
+          backgroundColor: '#2563eb',
+          color: 'white',
+          textDecoration: 'none',
+          borderRadius: '0.375rem',
+          fontSize: '1.125rem',
+        }}>
+          Browse Products
+        </Link>
+      </div>
 
-      <div className="product-grid">
-        {products.map((product: any) => (
-          <article key={product.id} className="product-card">
-            <h2 className="product-title">
-              <a href={`/products/${product.slug}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                {product.name}
-              </a>
-            </h2>
-            <p className="product-description">{product.shortDescription}</p>
-            {product.pricing && (
-              <div className="product-price">
-                {product.pricing.currency} {product.pricing.amount}
-              </div>
-            )}
-            <div>
-              {product.geoRegions?.map((region: any) => (
-                <span key={region.id} className="region-badge">
-                  {region.code}
-                </span>
-              ))}
+      <div style={{ padding: '2rem 0' }}>
+        <h2 style={{ fontSize: '1.5rem', fontWeight: '600', marginBottom: '1rem', textAlign: 'center' }}>
+          Featured Categories
+        </h2>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', maxWidth: '800px', margin: '0 auto' }}>
+          {['Technology', 'Software', 'Courses', 'Finance'].map((category) => (
+            <div key={category} style={{
+              padding: '1.5rem',
+              border: '1px solid #e5e7eb',
+              borderRadius: '0.5rem',
+              textAlign: 'center',
+            }}>
+              <h3 style={{ fontSize: '1.125rem', fontWeight: '600', marginBottom: '0.5rem' }}>{category}</h3>
+              <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>Explore products</p>
             </div>
-          </article>
-        ))}
+          ))}
+        </div>
       </div>
     </main>
   );
