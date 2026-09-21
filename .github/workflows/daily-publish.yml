@@ -4,6 +4,11 @@ on:
   schedule:
     - cron: '17 1 * * *'
   workflow_dispatch:
+    inputs:
+      start_offset:
+        description: 'Marketplace resume offset (diagnostics/recovery only)'
+        required: false
+        default: '0'
 
 concurrency:
   group: daily-ai-publish
@@ -21,6 +26,7 @@ jobs:
       DEEPSEEK_MODEL: ${{ vars.DEEPSEEK_MODEL || 'deepseek-flash' }}
       AI_ARTICLE_LANGUAGE: ${{ vars.AI_ARTICLE_LANGUAGE || 'en' }}
       DIGISTORE24_AFFILIATE_ID: ${{ vars.DIGISTORE24_AFFILIATE_ID || 'adminstore' }}
+      CATALOG_START_OFFSET: ${{ inputs.start_offset || '0' }}
       NEXT_PUBLIC_SITE_URL: ${{ vars.NEXT_PUBLIC_SITE_URL }}
       PUBLISH_API_URL: ${{ vars.AUTOMATION_API_URL || vars.NEXT_PUBLIC_SITE_URL }}
       AUTOMATION_SECRET: ${{ secrets.AUTOMATION_SECRET }}

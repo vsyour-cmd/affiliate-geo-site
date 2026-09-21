@@ -52,10 +52,12 @@ async function run() {
     return
   }
   if (!baseURL || !secret) throw new Error('PUBLISH_API_URL and AUTOMATION_SECRET are required')
+  const startOffset = Number.parseInt(process.env.CATALOG_START_OFFSET || '0', 10)
+  if (!Number.isInteger(startOffset) || startOffset < 0 || startOffset >= offers.length) throw new Error('CATALOG_START_OFFSET is invalid')
   let created = 0
   let updated = 0
   let unchanged = 0
-  for (let offset = 0; offset < offers.length; offset += 1) {
+  for (let offset = startOffset; offset < offers.length; offset += 1) {
     const items = offers.slice(offset, offset + 1).map((offer) => ({ ...offer, currency: String(offer.currency || first.currency), imageUrl: offer.imageUrl ? new URL(String(offer.imageUrl), endpoint).toString() : undefined, promoLink: `https://www.digistore24.com/redir/${Number(offer.productId)}/${affiliateId}/` }))
     let result: { created?: number; updated?: number; unchanged?: number; error?: string } | undefined
     for (let attempt = 1; attempt <= 8; attempt += 1) {
