@@ -53,14 +53,14 @@ export async function POST(request: NextRequest) {
     const categorySlug = slugify(categoryName) || 'other'
     let categoryId = categoryIds.get(categorySlug)
     if (!categoryId) {
-      const found = await payload.find({ collection: 'categories', where: { slug: { equals: categorySlug } }, limit: 1, overrideAccess: true })
-      const category = found.docs[0] || await payload.create({ collection: 'categories', data: { name: categoryName, slug: categorySlug }, overrideAccess: true })
+      const found = await payload.find({ collection: 'categories', where: { slug: { equals: categorySlug } }, limit: 1, select: { slug: true }, overrideAccess: true })
+      const category = found.docs[0] || await payload.create({ collection: 'categories', data: { name: categoryName, slug: categorySlug }, select: { slug: true }, overrideAccess: true })
       categoryId = Number(category.id)
       categoryIds.set(categorySlug, categoryId)
     }
     const description = plainText(offer.description) || `Marketplace listing for ${offer.label}. Verify current product details on the vendor website.`
     const sourceId = `digistore24:${offer.id}`
-    const existing = await payload.find({ collection: 'products', where: { sourceId: { equals: sourceId } }, limit: 1, overrideAccess: true })
+    const existing = await payload.find({ collection: 'products', where: { sourceId: { equals: sourceId } }, limit: 1, select: { affiliateUrl: true, sourceData: true }, overrideAccess: true })
     if (existing.docs[0]?.affiliateUrl === offer.promoLink && JSON.stringify(existing.docs[0]?.sourceData) === JSON.stringify(offer)) {
       unchanged += 1
       continue
@@ -81,10 +81,10 @@ export async function POST(request: NextRequest) {
       lastSeenAt: body.fetchedAt || new Date().toISOString(), sourceData: offer,
     }
     if (existing.docs[0]) {
-      await payload.update({ collection: 'products', id: existing.docs[0].id, data, overrideAccess: true })
+      await payload.update({ collection: 'products', id: existing.docs[0].id, data, select: { sourceId: true }, overrideAccess: true })
       updated += 1
     } else {
-      await payload.create({ collection: 'products', data, overrideAccess: true })
+      await payload.create({ collection: 'products', data, select: { sourceId: true }, overrideAccess: true })
       created += 1
     }
     } catch (error) {
