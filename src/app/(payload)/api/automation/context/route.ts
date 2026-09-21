@@ -1,10 +1,11 @@
 import { getPayload } from 'payload'
 import config from '@payload-config'
 import { isAutomationAuthorized } from '@/lib/automation-auth'
+import { NextRequest, NextResponse } from 'next/server'
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   if (!(await isAutomationAuthorized(request))) {
-    return Response.json({ error: 'Unauthorized' }, { status: 401 })
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
   const payload = await getPayload({ config })
@@ -26,5 +27,5 @@ export async function GET(request: Request) {
     }),
   ])
 
-  return Response.json({ products: products.docs, articles: articles.docs })
+  return NextResponse.json({ products: products.docs, articles: articles.docs })
 }
