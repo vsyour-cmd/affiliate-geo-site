@@ -12,7 +12,13 @@ export async function GET(request: NextRequest) {
   const [products, articles] = await Promise.all([
     payload.find({
       collection: 'products',
-      where: { status: { equals: 'active' } },
+      where: {
+        and: [
+          { status: { equals: 'active' } },
+          { source: { equals: 'digistore24' } },
+          { acceptsAffiliationsAutomatically: { equals: true } },
+        ],
+      },
       limit: 100,
       depth: 2,
       sort: 'slug',

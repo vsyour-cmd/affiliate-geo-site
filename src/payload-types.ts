@@ -171,6 +171,11 @@ export interface Product {
   id: number;
   name: string;
   slug: string;
+  source?: string | null;
+  sourceId?: string | null;
+  productId?: number | null;
+  vendorId?: number | null;
+  vendorName?: string | null;
   shortDescription: string;
   description: {
     root: {
@@ -190,12 +195,43 @@ export interface Product {
   category: number | Category;
   status: 'active' | 'draft' | 'archived';
   affiliateUrl: string;
+  salesPageUrl?: string | null;
+  affiliateSupportPageUrl?: string | null;
+  marketplaceImageUrl?: string | null;
+  acceptsAffiliationsAutomatically?: boolean | null;
+  approvalStatus?: string | null;
+  billingTypes?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
   commissionRate: number;
+  commissionFixed?: number | null;
+  conversionRate?: number | null;
+  cancelRate?: number | null;
+  earningsPerSale?: number | null;
+  earningsPerOrderformClick?: number | null;
+  salesRank?: number | null;
   pricing: {
     amount: number;
     currency?: ('USD' | 'EUR' | 'GBP' | 'CNY' | 'JPY' | 'AUD') | null;
   };
-  geoRegions: (number | GeoRegion)[];
+  geoRegions?: (number | GeoRegion)[] | null;
+  sourceStatus?: ('active' | 'stale' | 'retirementCandidate') | null;
+  lastSeenAt?: string | null;
+  sourceData?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
   images?:
     | {
         image?: (number | null) | Media;
@@ -525,12 +561,29 @@ export interface UsersSelect<T extends boolean = true> {
 export interface ProductsSelect<T extends boolean = true> {
   name?: T;
   slug?: T;
+  source?: T;
+  sourceId?: T;
+  productId?: T;
+  vendorId?: T;
+  vendorName?: T;
   shortDescription?: T;
   description?: T;
   category?: T;
   status?: T;
   affiliateUrl?: T;
+  salesPageUrl?: T;
+  affiliateSupportPageUrl?: T;
+  marketplaceImageUrl?: T;
+  acceptsAffiliationsAutomatically?: T;
+  approvalStatus?: T;
+  billingTypes?: T;
   commissionRate?: T;
+  commissionFixed?: T;
+  conversionRate?: T;
+  cancelRate?: T;
+  earningsPerSale?: T;
+  earningsPerOrderformClick?: T;
+  salesRank?: T;
   pricing?:
     | T
     | {
@@ -538,6 +591,9 @@ export interface ProductsSelect<T extends boolean = true> {
         currency?: T;
       };
   geoRegions?: T;
+  sourceStatus?: T;
+  lastSeenAt?: T;
+  sourceData?: T;
   images?:
     | T
     | {

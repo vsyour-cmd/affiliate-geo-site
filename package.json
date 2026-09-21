@@ -16,6 +16,7 @@
     "daily:update": "tsx scripts/daily-update.ts",
     "daily:update:remote": "cross-env NODE_ENV=production tsx scripts/daily-update.ts",
     "daily:publish": "tsx scripts/daily-publish-ai.ts",
+    "daily:catalog-sync": "tsx scripts/sync-digistore24-marketplace.ts",
     "daily:publish:remote": "cross-env NODE_ENV=production tsx scripts/daily-publish-ai.ts",
     "daily:verify": "tsx scripts/verify-daily-publish.ts",
     "daily:verify:remote": "cross-env NODE_ENV=production tsx scripts/verify-daily-publish.ts",

@@ -4,6 +4,7 @@ import path from 'path'
 const migrations = [
   { source: 'src/migrations/20260921_021904.ts', output: 'migrations/0001_initial.sql', name: '20260921_021904', batch: 1 },
   { source: 'src/migrations/20260921_025320.ts', output: 'migrations/0002_add_articles.sql', name: '20260921_025320', batch: 2 },
+  { source: 'src/migrations/20260921_041748_digistore_catalog_fields.ts', output: 'migrations/0003_digistore_catalog_fields.sql', name: '20260921_041748_digistore_catalog_fields', batch: 3 },
 ]
 
 async function run() {
