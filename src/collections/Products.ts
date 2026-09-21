@@ -8,6 +8,9 @@ export const Products: CollectionConfig = {
   },
   access: {
     read: () => true,
+    create: ({ req }) => Boolean(req.user),
+    update: ({ req }) => Boolean(req.user),
+    delete: ({ req }) => Boolean(req.user),
   },
   fields: [
     {
@@ -83,6 +86,7 @@ export const Products: CollectionConfig = {
             { label: 'GBP', value: 'GBP' },
             { label: 'CNY', value: 'CNY' },
             { label: 'JPY', value: 'JPY' },
+            { label: 'AUD', value: 'AUD' },
           ],
           defaultValue: 'USD',
         },

@@ -7,6 +7,9 @@ export const Media: CollectionConfig = {
   },
   access: {
     read: () => true,
+    create: ({ req }) => Boolean(req.user),
+    update: ({ req }) => Boolean(req.user),
+    delete: ({ req }) => Boolean(req.user),
   },
   fields: [
     {
@@ -14,21 +17,9 @@ export const Media: CollectionConfig = {
       type: 'text',
       required: true,
     },
-    {
-      name: 'width',
-      type: 'number',
-    },
-    {
-      name: 'height',
-      type: 'number',
-    },
-    {
-      name: 'filesize',
-      type: 'number',
-    },
-    {
-      name: 'filename',
-      type: 'text',
-    },
   ],
+  upload: {
+    crop: false,
+    focalPoint: false,
+  },
 };

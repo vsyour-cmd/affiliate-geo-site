@@ -7,6 +7,9 @@ export const ContentUpdates: CollectionConfig = {
   },
   access: {
     read: () => true,
+    create: ({ req }) => Boolean(req.user),
+    update: ({ req }) => Boolean(req.user),
+    delete: ({ req }) => Boolean(req.user),
   },
   fields: [
     {
@@ -53,6 +56,11 @@ export const ContentUpdates: CollectionConfig = {
       name: 'isPublished',
       type: 'checkbox',
       defaultValue: false,
+    },
+    {
+      name: 'processedAt',
+      type: 'date',
+      admin: { readOnly: true },
     },
     {
       name: 'seo',

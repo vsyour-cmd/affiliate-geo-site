@@ -2,6 +2,10 @@ import type { GlobalConfig } from 'payload';
 
 export const Global: GlobalConfig = {
   slug: 'global',
+  access: {
+    read: () => true,
+    update: ({ req }) => Boolean(req.user),
+  },
   fields: [
     {
       name: 'siteName',

@@ -1,7 +1,0 @@
-[build]
-command = "npm run deploy"
-output_directory = "dist"
-node_version = "20"
-
-[site]
-bucket = "dist"

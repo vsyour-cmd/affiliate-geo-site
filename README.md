@@ -1,128 +1,110 @@
-# Affiliate GEO Site
+# Affiliate GEO Marketplace
 
-Payload CMS + Next.js 14 静态导出 + Cloudflare Pages 部署的 Affiliate Marketplace 网站。
+基于 Payload CMS、Next.js 和 Cloudflare Workers 的地区化 Affiliate 产品站。生产环境使用 Cloudflare D1 保存内容、R2 保存媒体，OpenNext 将 Next.js 与 Payload Admin/API 部署到 Worker。
 
-## 特性
+## 已实现
 
-- 每个 Affiliate Product 独立推广页（`/products/{slug}/{region}`）
-- 大量 GEO 匹配：基于访问者国家自动路由到最优地区页面
-- SEO 优化：sitemap、robots、Open Graph、Twitter Cards、Schema.org、hreflang
-- 每日自动内容更新（GitHub Actions + Cloudflare Pages）
-- 静态导出，部署在 Cloudflare Pages 全球边缘网络
+- Payload Admin、REST API、GraphQL API
+- 产品、分类、地区、内容更新、媒体和站点设置模型
+- D1 数据库与 R2 媒体绑定
+- 产品列表和地区化产品详情页
+- 根据 `CF-IPCountry` 选择商品实际支持的地区，并提供安全回退
+- Lexical 富文本、地区价格、结构化数据和 Affiliate 标记
+- 动态 sitemap、robots、404、隐私政策和 Affiliate Disclosure
+- 幂等种子脚本和一次性每日内容更新处理
+- GitHub Actions 类型检查、定时更新与部署流程
+- DeepSeek 每日文章生成、质量门槛、幂等发布及生产验证报告
 
-## 项目结构
+## 本地开发
 
-```
-payloadcms/
-├── payload.config.ts
-├── next.config.js
-├── package.json
-├── .cloudflare/pages.toml
-├── .github/workflows/daily-deploy.yml
-├── src/
-│   ├── collections/
-│   │   ├── Products.ts
-│   │   ├── Categories.ts
-│   │   ├── GeoRegions.ts
-│   │   ├── ContentUpdates.ts
-│   │   ├── Media.ts
-│   │   └── Global.ts
-│   ├── app/
-│   │   ├── layout.tsx
-│   │   ├── page.tsx
-│   │   ├── globals.css
-│   │   ├── sitemap.ts
-│   │   ├── robots.ts
-│   │   └── products/
-│   │       ├── [slug]/page.tsx
-│   │       └── [slug]/[region]/page.tsx
-│   └── components/
-├── functions/
-│   └── _middleware.ts
-└── scripts/
-    ├── generate-static-pages.ts
-    ├── daily-update.ts
-    └── seed.ts
-```
+要求 Node.js 20.9 或更高版本。
 
-## 快速开始
-
-### 1. 安装依赖
-
-```bash
+```powershell
 npm install
+Copy-Item .env.example .env
 ```
 
-### 2. 配置环境变量
+在 `.env` 中设置至少 32 位随机 `PAYLOAD_SECRET`，然后执行：
 
-```bash
-cp .env.example .env
-```
-
-编辑 `.env`，设置 `PAYLOAD_SECRET`。
-
-### 3. 本地开发
-
-```bash
+```powershell
+npm run payload -- migrate
+npm run seed
 npm run dev
 ```
 
-访问 http://localhost:3000/admin 打开 Payload Admin。
+访问：
 
-### 4. 初始化数据
+- 前台：`http://localhost:3000`
+- 后台：`http://localhost:3000/admin`
 
-```bash
-npx tsx scripts/seed.ts
+第一次访问后台时创建管理员账号。
+
+## 验证命令
+
+```powershell
+npm run generate:types
+npm run lint
+npm run typecheck
+npm run build
+npm run build:cloudflare
+npm run daily:update
 ```
 
-### 5. 构建 & 预览
+Worker 预览与烟雾测试：
 
-```bash
-npm run deploy
+```powershell
+Copy-Item .dev.vars.example .dev.vars
 npm run preview
+# 在另一个终端执行
+npm run smoke
 ```
 
-## 部署到 Cloudflare Pages
+OpenNext 在 Windows 下会显示兼容性提示；GitHub Actions 使用 Ubuntu，不受该提示影响。
 
-### 前置要求
+## Cloudflare 上线前配置
 
-- GitHub 仓库
-- Cloudflare 账号
+1. 创建 D1 数据库 `affiliate-geo-site`。
+2. 创建 R2 Bucket `affiliate-geo-site-media`。
+3. 将 [wrangler.jsonc](./wrangler.jsonc) 中的 `REPLACE_WITH_D1_DATABASE_ID` 替换为真实 D1 ID。
+4. 使用 `npx wrangler secret put PAYLOAD_SECRET` 设置生产密钥。
+5. 在 GitHub `production` Environment 中配置：
+   - Secret：`PAYLOAD_SECRET`
+   - Secret：`AUTOMATION_SECRET`
+   - Secret：`DEEPSEEK_API_KEY`
+   - Secret：`CLOUDFLARE_API_TOKEN`
+   - Secret：`CLOUDFLARE_ACCOUNT_ID`
+   - Variable：`NEXT_PUBLIC_SITE_URL`
+6. 部署前生成并提交数据库迁移：
 
-### 步骤
-
-1. **推送到 GitHub**
-```bash
-git init
-git remote add origin https://github.com/YOUR_USERNAME/affiliate-geo-site.git
-git add .
-git commit -m "Initial commit"
-git push -u origin main
+```powershell
+npm run payload -- migrate:create
+npm run deploy
 ```
 
-2. **创建 Cloudflare Pages 项目**
-   - 连接 GitHub 仓库
-   - Build command: `npm run deploy`
-   - Output directory: `dist`
-   - Node version: `20`
-   - 添加环境变量：`PAYLOAD_SECRET`
+`npm run deploy` 会修改远程数据库并发布 Worker，请只在确认 Cloudflare 配置后执行。
 
-3. **配置 GitHub Secrets**
-   - `CLOUDFLARE_API_TOKEN`
-   - `CLOUDFLARE_ACCOUNT_ID`
-   - `PAYLOAD_SECRET`
+推送到 `main` 后，[deploy.yml](./.github/workflows/deploy.yml) 会自动执行类型检查、数据库迁移和 Worker 部署。
 
-4. **自定义域名**
-   在 Cloudflare Pages → Custom domains 添加你的域名。
+## DeepSeek 每日自动发文
 
-## 自动化
+[daily-publish.yml](./.github/workflows/daily-publish.yml) 每天 UTC 01:17（北京时间约 09:17）运行：
 
-- **每日构建**：GitHub Actions 每天 UTC 00:00 自动构建并部署
-- **内容更新**：在 ContentUpdates 中发布内容后，次日自动生效
-- **GEO 路由**：Cloudflare Pages Functions 自动检测访问者国家并重定向
+1. 从生产 API 获取活动商品和近期文章。
+2. 使用 DeepSeek JSON Output 生成一篇英文文章。
+3. 检查长度、章节、FAQ、重复标题、重复段落及夸大宣传用语。
+4. 只有质量分不低于 85 才通过带密钥的 Worker API 写入生产 D1。
+5. 再从生产 API 查询当天记录，要求恰好发布一篇。
+6. 上传生成报告和 D1 验证报告，保留 30 天。
 
-## 脚本
+同一日期和商品使用唯一 `automationKey`，重复运行只会返回已有文章。自动文章默认 `indexable=true`、`monetizable=false`、`reviewStatus=autoPublished`。
 
-- `npm run generate:static` - 为所有产品×地区生成静态 HTML
-- `npm run daily:update` - 执行每日内容更新
-- `npm run seed` - 初始化示例数据
+## 内容更新
+
+在 Admin 的 `Content Updates` 中创建记录，设置发布时间、关联产品并勾选发布。每日工作流只处理 `processedAt` 为空且已到发布时间的记录；成功后写入 `processedAt`，不会重复执行。
+
+## 上线前人工检查
+
+- 将 Privacy 页面中的联系方式替换为真实可监控邮箱
+- 确认每个 Affiliate URL、价格和佣金披露准确
+- 确认 Cloudflare Worker Paid 计划及 D1/R2 配额满足需求
+- 使用真实域名检查 sitemap、robots、Admin 登录和媒体上传
