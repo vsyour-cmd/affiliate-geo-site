@@ -46,6 +46,7 @@ export async function POST(request: NextRequest) {
   const categoryIds = new Map<string, number>()
   let created = 0
   let updated = 0
+  let unchanged = 0
 
   for (const offer of body.offers) {
     if (!/^\d+$/.test(String(offer.productId)) || !offer.id || !offer.label || !offer.promoLink.includes(`/redir/${offer.productId}/`)) {
@@ -63,6 +64,10 @@ export async function POST(request: NextRequest) {
     const description = plainText(offer.description) || `Marketplace listing for ${offer.label}. Verify current product details on the vendor website.`
     const sourceId = `digistore24:${offer.id}`
     const existing = await payload.find({ collection: 'products', where: { sourceId: { equals: sourceId } }, limit: 1, overrideAccess: true })
+    if (existing.docs[0]?.affiliateUrl === offer.promoLink && JSON.stringify(existing.docs[0]?.sourceData) === JSON.stringify(offer)) {
+      unchanged += 1
+      continue
+    }
     const data = {
       name: offer.label,
       slug: `${slugify(offer.label) || 'product'}-${offer.productId}`,
@@ -86,5 +91,5 @@ export async function POST(request: NextRequest) {
       created += 1
     }
   }
-  return NextResponse.json({ created, updated, processed: body.offers.length })
+  return NextResponse.json({ created, updated, unchanged, processed: body.offers.length })
 }

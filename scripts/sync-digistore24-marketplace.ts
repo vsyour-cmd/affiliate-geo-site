@@ -54,9 +54,10 @@ async function run() {
   if (!baseURL || !secret) throw new Error('PUBLISH_API_URL and AUTOMATION_SECRET are required')
   let created = 0
   let updated = 0
+  let unchanged = 0
   for (let offset = 0; offset < offers.length; offset += 10) {
     const items = offers.slice(offset, offset + 10).map((offer) => ({ ...offer, currency: String(offer.currency || first.currency), imageUrl: offer.imageUrl ? new URL(String(offer.imageUrl), endpoint).toString() : undefined, promoLink: `https://www.digistore24.com/redir/${Number(offer.productId)}/${affiliateId}/` }))
-    let result: { created?: number; updated?: number; error?: string } | undefined
+    let result: { created?: number; updated?: number; unchanged?: number; error?: string } | undefined
     for (let attempt = 1; attempt <= 8; attempt += 1) {
       const response = await fetch(`${baseURL}/automation/catalog-sync`, { method: 'POST', headers: { 'content-type': 'application/json', 'user-agent': 'Mozilla/5.0 (compatible; AffiliateGeoPublisher/1.0)', 'x-automation-secret': secret }, body: JSON.stringify({ offers: items, fetchedAt }), signal: AbortSignal.timeout(120_000) })
       const responseText = await response.text()
@@ -69,9 +70,10 @@ async function run() {
     if (!result) throw new Error(`Catalog batch ${offset}-${offset + items.length} returned no result`)
     created += result.created || 0
     updated += result.updated || 0
-    console.log(JSON.stringify({ event: 'catalog-batch', processed: offset + items.length, total: offers.length, created, updated }))
+    unchanged += result.unchanged || 0
+    console.log(JSON.stringify({ event: 'catalog-batch', processed: offset + items.length, total: offers.length, created, updated, unchanged }))
   }
-  const report = { status: 'complete', fetchedAt, catalogScope: 'global-marketplace', expectedCount: first.count, fetchedCount: offers.length, uniqueCount: unique.size, withPromoLink: offers.length, affiliateId, created, updated }
+  const report = { status: 'complete', fetchedAt, catalogScope: 'global-marketplace', expectedCount: first.count, fetchedCount: offers.length, uniqueCount: unique.size, withPromoLink: offers.length, affiliateId, created, updated, unchanged }
   await fs.mkdir(path.dirname(reportPath), { recursive: true })
   await fs.writeFile(reportPath, `${JSON.stringify(report, null, 2)}\n`, 'utf8')
   console.log(JSON.stringify({ event: 'catalog-sync-complete', ...report }))
