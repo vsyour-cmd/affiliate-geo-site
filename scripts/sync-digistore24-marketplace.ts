@@ -54,17 +54,17 @@ async function run() {
   if (!baseURL || !secret) throw new Error('PUBLISH_API_URL and AUTOMATION_SECRET are required')
   let created = 0
   let updated = 0
-  for (let offset = 0; offset < offers.length; offset += 25) {
-    const items = offers.slice(offset, offset + 25).map((offer) => ({ ...offer, currency: String(offer.currency || first.currency), imageUrl: offer.imageUrl ? new URL(String(offer.imageUrl), endpoint).toString() : undefined, promoLink: `https://www.digistore24.com/redir/${Number(offer.productId)}/${affiliateId}/` }))
+  for (let offset = 0; offset < offers.length; offset += 10) {
+    const items = offers.slice(offset, offset + 10).map((offer) => ({ ...offer, currency: String(offer.currency || first.currency), imageUrl: offer.imageUrl ? new URL(String(offer.imageUrl), endpoint).toString() : undefined, promoLink: `https://www.digistore24.com/redir/${Number(offer.productId)}/${affiliateId}/` }))
     let result: { created?: number; updated?: number; error?: string } | undefined
-    for (let attempt = 1; attempt <= 4; attempt += 1) {
+    for (let attempt = 1; attempt <= 8; attempt += 1) {
       const response = await fetch(`${baseURL}/automation/catalog-sync`, { method: 'POST', headers: { 'content-type': 'application/json', 'user-agent': 'Mozilla/5.0 (compatible; AffiliateGeoPublisher/1.0)', 'x-automation-secret': secret }, body: JSON.stringify({ offers: items, fetchedAt }), signal: AbortSignal.timeout(120_000) })
       const responseText = await response.text()
       try { result = JSON.parse(responseText) as typeof result } catch { result = { error: responseText.slice(0, 240).replace(/\s+/g, ' ') } }
       if (response.ok) break
-      if (![429, 500, 502, 503, 504].includes(response.status) || attempt === 4) throw new Error(`Catalog batch ${offset}-${offset + items.length}: HTTP ${response.status} ${result?.error || ''}`)
+      if (![429, 500, 502, 503, 504].includes(response.status) || attempt === 8) throw new Error(`Catalog batch ${offset}-${offset + items.length}: HTTP ${response.status} ${result?.error || ''}`)
       console.warn(JSON.stringify({ event: 'catalog-batch-retry', offset, attempt, status: response.status }))
-      await new Promise((resolve) => setTimeout(resolve, 1_000 * 2 ** attempt))
+      await new Promise((resolve) => setTimeout(resolve, Math.min(1_000 * 2 ** attempt, 30_000)))
     }
     if (!result) throw new Error(`Catalog batch ${offset}-${offset + items.length} returned no result`)
     created += result.created || 0
