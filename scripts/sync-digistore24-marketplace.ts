@@ -63,7 +63,7 @@ async function run() {
   let updated = 0
   let unchanged = 0
   for (let offset = startOffset; offset < offers.length; offset += 1) {
-    const items = offers.slice(offset, offset + 1).map((offer) => ({ ...offer, currency: String(offer.currency || first.currency), imageUrl: offer.imageUrl ? new URL(String(offer.imageUrl), endpoint).toString() : undefined, promoLink: `https://www.digistore24.com/redir/${Number(offer.productId)}/${affiliateId}/` }))
+    const items = offers.slice(offset, offset + 1).map((offer) => ({ ...offer, currency: String(offer.currency || first.currency), imageUrl: offer.imageUrl ? new URL(String(offer.imageUrl), endpoint).toString() : undefined, promoLink: `https://www.checkout-ds24.com/redir/${Number(offer.productId)}/${affiliateId}/` }))
     let result: { created?: number; updated?: number; unchanged?: number; error?: string } | undefined
     for (let attempt = 1; attempt <= 8; attempt += 1) {
       const response = await fetch(`${baseURL}/automation/catalog-sync`, { method: 'POST', headers: { 'content-type': 'application/json', 'user-agent': 'Mozilla/5.0 (compatible; AffiliateGeoPublisher/1.0)', 'x-automation-secret': secret }, body: JSON.stringify({ offers: items, fetchedAt }), signal: AbortSignal.timeout(120_000) })
