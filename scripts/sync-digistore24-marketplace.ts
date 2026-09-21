@@ -34,18 +34,23 @@ async function run() {
   const fetchedAt = new Date().toISOString()
   const first = await fetchPage(1)
   const pages = Math.ceil(first.count / 100)
-  const offers = [...first.items]
+  let offers = [...first.items]
+  const observedCounts = [first.count]
   for (let start = 2; start <= pages; start += 3) {
     const batch = await Promise.all(Array.from({ length: Math.min(3, pages - start + 1) }, (_, index) => fetchPage(start + index)))
     for (const page of batch) {
-      if (page.count !== first.count) throw new Error(`Marketplace count changed from ${first.count} to ${page.count}`)
+      observedCounts.push(page.count)
       offers.push(...page.items)
     }
   }
+  const minimumCount = Math.min(...observedCounts)
+  const maximumCount = Math.max(...observedCounts)
+  if (maximumCount - minimumCount > 10) throw new Error(`Marketplace count drifted too far during pagination: ${minimumCount}-${maximumCount}`)
+  offers = [...new Map(offers.map((offer) => [String(offer.id), offer])).values()]
   const unique = new Set(offers.map((offer) => String(offer.id)))
-  if (offers.length !== first.count || unique.size !== first.count) throw new Error(`Incomplete catalog: expected ${first.count}, got ${offers.length}/${unique.size} unique`)
+  if (unique.size < minimumCount - 10) throw new Error(`Incomplete catalog: observed ${minimumCount}-${maximumCount}, got ${unique.size} unique`)
   if (process.env.CATALOG_DRY_RUN === '1') {
-    const report = { status: 'dry-run', fetchedAt, catalogScope: 'global-marketplace', expectedCount: first.count, fetchedCount: offers.length, uniqueCount: unique.size, withPromoLink: offers.length, affiliateId }
+    const report = { status: 'dry-run', fetchedAt, catalogScope: 'global-marketplace', observedCountRange: [minimumCount, maximumCount], fetchedCount: offers.length, uniqueCount: unique.size, withPromoLink: offers.length, affiliateId }
     await fs.mkdir(path.dirname(reportPath), { recursive: true })
     await fs.writeFile(reportPath, `${JSON.stringify(report, null, 2)}\n`, 'utf8')
     console.log(JSON.stringify({ event: 'catalog-sync-dry-run', ...report }))
@@ -75,7 +80,7 @@ async function run() {
     unchanged += result.unchanged || 0
     console.log(JSON.stringify({ event: 'catalog-batch', processed: offset + items.length, total: offers.length, created, updated, unchanged }))
   }
-  const report = { status: 'complete', fetchedAt, catalogScope: 'global-marketplace', expectedCount: first.count, fetchedCount: offers.length, uniqueCount: unique.size, withPromoLink: offers.length, affiliateId, created, updated, unchanged }
+  const report = { status: 'complete', fetchedAt, catalogScope: 'global-marketplace', observedCountRange: [minimumCount, maximumCount], fetchedCount: offers.length, uniqueCount: unique.size, withPromoLink: offers.length, affiliateId, created, updated, unchanged }
   await fs.mkdir(path.dirname(reportPath), { recursive: true })
   await fs.writeFile(reportPath, `${JSON.stringify(report, null, 2)}\n`, 'utf8')
   console.log(JSON.stringify({ event: 'catalog-sync-complete', ...report }))
