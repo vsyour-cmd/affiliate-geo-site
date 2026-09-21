@@ -12,7 +12,7 @@ type GeneratedArticle = {
 
 type QualityResult = { score: number; errors: string[]; notes: string[]; wordCount: number }
 
-const promptVersion = 'affiliate-editor-v1'
+const promptVersion = 'affiliate-editor-v2'
 const reportPath = path.resolve('artifacts/daily-publish-report.json')
 const model = process.env.DEEPSEEK_MODEL || 'deepseek-flash'
 const language = process.env.AI_ARTICLE_LANGUAGE || 'en'
@@ -92,7 +92,7 @@ async function requestDeepSeek(product: Record<string, unknown>, recentTitles: s
   const apiKey = process.env.DEEPSEEK_API_KEY
   if (!apiKey) throw new Error('DEEPSEEK_API_KEY is required')
   const schemaExample = { title: '35-90 character title', excerpt: '100-240 character summary', sections: [{ heading: 'Section heading', paragraphs: ['Paragraph one', 'Paragraph two'], bullets: ['Optional factual bullet'] }], faq: [{ question: 'Question?', answer: 'Answer.' }] }
-  const system = `You are a careful affiliate editorial writer. Return JSON only. Write in ${language}. Use only facts in PRODUCT_SNAPSHOT; never invent performance, discounts, endorsements, customer counts, or guarantees. The article must be useful and balanced, 700-1800 words, contain at least 4 sections with at least 2 paragraphs each, and at least 3 FAQ entries. Explain limitations and tell readers to verify current terms on the official provider site. Do not use hype or investment advice. JSON shape: ${JSON.stringify(schemaExample)}`
+  const system = `You are a careful affiliate editorial writer. Return JSON only. Write in ${language}. Use only facts in PRODUCT_SNAPSHOT; never invent performance, discounts, endorsements, customer counts, or assured outcomes. Never output any of these exact expressions, even in a disclaimer or negated sentence: guaranteed, risk-free, limited time, the best product, the best choice, the best deal, you will earn, you will save, you will profit. The article must be useful and balanced, 700-1800 words, contain at least 4 sections with at least 2 paragraphs each, and at least 3 FAQ entries. Explain limitations and tell readers to verify current terms on the official provider site. Do not use hype or investment advice. JSON shape: ${JSON.stringify(schemaExample)}`
   const user = `PRODUCT_SNAPSHOT=${JSON.stringify(product)}\nRECENT_TITLES=${JSON.stringify(recentTitles)}\nREWRITE_FEEDBACK=${JSON.stringify(feedback)}\nCreate one original evergreen article. Include the word JSON in your response instructions and output only the JSON object.`
   const response = await fetch('https://api.deepseek.com/chat/completions', {
     method: 'POST',
