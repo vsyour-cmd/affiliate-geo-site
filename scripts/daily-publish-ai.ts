@@ -119,13 +119,21 @@ async function runRemote() {
   if (!baseURL || !automationSecret) throw new Error('PUBLISH_API_URL and AUTOMATION_SECRET are required for remote publishing')
   const startedAt = new Date()
   const date = startedAt.toISOString().slice(0, 10)
-  const productResponse = await fetch(`${baseURL}/api/products?where[status][equals]=active&limit=100&depth=2&sort=slug`)
+  const productsURL = new URL('/api/products', baseURL)
+  productsURL.searchParams.set('where[status][equals]', 'active')
+  productsURL.searchParams.set('limit', '100')
+  productsURL.searchParams.set('depth', '2')
+  productsURL.searchParams.set('sort', 'slug')
+  const productResponse = await fetch(productsURL)
   if (!productResponse.ok) throw new Error(`Products API returned ${productResponse.status}`)
   const productData = await productResponse.json() as { docs: Array<Record<string, any>> }
   if (!productData.docs.length) throw new Error('No active products are available for article generation')
   const product = productData.docs[Math.floor(startedAt.getTime() / 86_400_000) % productData.docs.length]
   const automationKey = `${date}:${product.id}`
-  const existingResponse = await fetch(`${baseURL}/api/articles?where[automationKey][equals]=${encodeURIComponent(automationKey)}&limit=1`)
+  const existingURL = new URL('/api/articles', baseURL)
+  existingURL.searchParams.set('where[automationKey][equals]', automationKey)
+  existingURL.searchParams.set('limit', '1')
+  const existingResponse = await fetch(existingURL)
   if (!existingResponse.ok) throw new Error(`Articles API returned ${existingResponse.status}`)
   const existingData = await existingResponse.json() as { docs: Array<Record<string, any>> }
   if (existingData.docs[0]) {
@@ -134,7 +142,11 @@ async function runRemote() {
     console.log(JSON.stringify({ event: 'daily-publish-skipped', automationKey, articleId: existing.id }))
     return
   }
-  const recentResponse = await fetch(`${baseURL}/api/articles?where[status][equals]=published&limit=30&sort=-publishedAt`)
+  const recentURL = new URL('/api/articles', baseURL)
+  recentURL.searchParams.set('where[status][equals]', 'published')
+  recentURL.searchParams.set('limit', '30')
+  recentURL.searchParams.set('sort', '-publishedAt')
+  const recentResponse = await fetch(recentURL)
   if (!recentResponse.ok) throw new Error(`Recent articles API returned ${recentResponse.status}`)
   const recentData = await recentResponse.json() as { docs: Array<{ title: string }> }
   const recentTitles = recentData.docs.map((article) => article.title)

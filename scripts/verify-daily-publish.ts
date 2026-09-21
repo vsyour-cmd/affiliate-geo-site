@@ -9,7 +9,13 @@ async function run() {
     const date = new Date().toISOString().slice(0, 10)
     const start = `${date}T00:00:00.000Z`
     const end = `${date}T23:59:59.999Z`
-    const url = `${baseURL}/api/articles?where[and][0][aiGenerated][equals]=true&where[and][1][status][equals]=published&where[and][2][publishedAt][greater_than_equal]=${encodeURIComponent(start)}&where[and][3][publishedAt][less_than_equal]=${encodeURIComponent(end)}&limit=10&sort=-publishedAt`
+    const url = new URL('/api/articles', baseURL)
+    url.searchParams.set('where[and][0][aiGenerated][equals]', 'true')
+    url.searchParams.set('where[and][1][status][equals]', 'published')
+    url.searchParams.set('where[and][2][publishedAt][greater_than_equal]', start)
+    url.searchParams.set('where[and][3][publishedAt][less_than_equal]', end)
+    url.searchParams.set('limit', '10')
+    url.searchParams.set('sort', '-publishedAt')
     const response = await fetch(url)
     if (!response.ok) throw new Error(`Production articles API returned ${response.status}`)
     const result = await response.json() as { docs: Array<Record<string, any>> }
