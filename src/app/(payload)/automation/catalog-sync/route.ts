@@ -39,10 +39,6 @@ export async function POST(request: NextRequest) {
   const body = await request.json() as { offers?: MarketplaceOffer[]; fetchedAt?: string }
   if (!Array.isArray(body.offers) || !body.offers.length || body.offers.length > 25) return NextResponse.json({ error: 'Expected 1-25 offers' }, { status: 400 })
   const payload = await getPayload({ config })
-  const placeholder = await payload.find({ collection: 'products', where: { slug: { equals: 'cloudflare-pro' } }, limit: 1, overrideAccess: true })
-  if (placeholder.docs[0]?.source !== 'digistore24' && placeholder.docs[0]?.status !== 'archived') {
-    await payload.update({ collection: 'products', id: placeholder.docs[0].id, data: { status: 'archived' }, overrideAccess: true })
-  }
   const categoryIds = new Map<string, number>()
   let created = 0
   let updated = 0
