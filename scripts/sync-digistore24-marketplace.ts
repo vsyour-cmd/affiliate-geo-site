@@ -8,7 +8,7 @@ const affiliateId = process.env.DIGISTORE24_AFFILIATE_ID || 'adminstore'
 const baseURL = (process.env.PUBLISH_API_URL || '').replace(/\/$/, '')
 const secret = process.env.AUTOMATION_SECRET || ''
 const reportPath = path.resolve('artifacts/digistore24-catalog-report.json')
-const catalogBatchSize = 10
+const catalogBatchSize = 1
 
 function pageURL(page: number) {
   const url = new URL(endpoint)

@@ -40,6 +40,8 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Sync complete Digistore24 Marketplace catalog
+        id: catalog_sync
+        continue-on-error: true
         run: npm run daily:catalog-sync
       - name: Generate and publish one gated article
         run: npm run daily:publish
@@ -53,3 +55,6 @@ jobs:
           path: artifacts/
           if-no-files-found: warn
           retention-days: 30
+      - name: Report catalog sync failure
+        if: steps.catalog_sync.outcome == 'failure'
+        run: exit 1
