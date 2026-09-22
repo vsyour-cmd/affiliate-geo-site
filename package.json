@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "cross-env NODE_OPTIONS=--no-deprecation next dev",
     "build": "cross-env NODE_OPTIONS=\"--no-deprecation --max-old-space-size=8000\" next build --webpack",
-    "build:cloudflare": "cross-env PAYLOAD_BUILD_LOCAL=1 opennextjs-cloudflare build",
+    "build:cloudflare": "npm run prepare:local-d1 && cross-env PAYLOAD_BUILD_LOCAL=1 opennextjs-cloudflare build",
     "start": "cross-env NODE_OPTIONS=--no-deprecation next start",
     "payload": "cross-env NODE_OPTIONS=--no-deprecation payload",
     "generate:types": "npm run generate:types:cloudflare && npm run generate:types:payload",
@@ -24,8 +24,9 @@
     "seed:remote": "cross-env NODE_ENV=production tsx scripts/seed.ts",
     "smoke": "tsx scripts/smoke-test.ts",
     "deploy": "npm run deploy:app && npm run deploy:database",
-    "deploy:app": "cross-env PAYLOAD_BUILD_LOCAL=1 opennextjs-cloudflare build && opennextjs-cloudflare deploy",
+    "deploy:app": "npm run build:cloudflare && opennextjs-cloudflare deploy",
     "deploy:database": "npm run migrations:sync && wrangler d1 migrations apply D1 --remote && wrangler d1 execute D1 --command \"PRAGMA optimize\" --remote",
+    "prepare:local-d1": "npm run migrations:sync && wrangler d1 migrations apply D1 --local",
     "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
     "lint": "cross-env NODE_OPTIONS=--max-old-space-size=6144 eslint .",
     "typecheck": "cross-env NODE_OPTIONS=--max-old-space-size=8192 tsc --noEmit"
