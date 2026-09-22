@@ -19,13 +19,37 @@ const headers = { accept: 'application/json', 'user-agent': 'Mozilla/5.0 (compat
 
 function normalize(value: unknown): ProductEnrichment {
   if (!value || typeof value !== 'object') throw new Error('product enrichment is not an object')
-  const item = value as Partial<ProductEnrichment>
+  const root = value as Record<string, unknown>
+  const wrapped = [root.product, root.enrichment, root.productEnrichment, root.content]
+    .find((candidate): candidate is Record<string, unknown> => Boolean(candidate && typeof candidate === 'object' && !Array.isArray(candidate)))
+  const item = (wrapped || root) as Record<string, unknown>
   const clean = (text: string) => text.replace(/\s*\[S\d+\]/gi, '').replace(/\s+/g, ' ').trim()
-  const summary = typeof item.summary === 'string' ? clean(item.summary).slice(0, 160) : ''
-  const overview = Array.isArray(item.overview) ? item.overview.filter((text): text is string => typeof text === 'string').map(clean).filter((text) => text.length >= 40).slice(0, 4) : []
-  const features = Array.isArray(item.features) ? item.features.flatMap((feature) => feature && typeof feature.title === 'string' && typeof feature.description === 'string' ? [{ title: clean(feature.title).slice(0, 90), description: clean(feature.description).slice(0, 400) }] : []).filter((feature) => feature.title.length >= 3 && feature.description.length >= 20).slice(0, 8) : []
-  const idealFor = Array.isArray(item.idealFor) ? item.idealFor.filter((text): text is string => typeof text === 'string').map(clean).filter((text) => text.length >= 10).slice(0, 6) : []
-  const limitations = Array.isArray(item.limitations) ? item.limitations.filter((text): text is string => typeof text === 'string').map(clean).filter((text) => text.length >= 10).slice(0, 6) : []
+  const stringList = (candidate: unknown) => {
+    if (Array.isArray(candidate)) return candidate.filter((text): text is string => typeof text === 'string').map(clean)
+    if (typeof candidate !== 'string') return []
+    const text = clean(candidate)
+    const paragraphs = candidate.split(/\n\s*\n|\n(?=[-•*])|(?<=[.!?])\s+(?=[A-Z])/).map(clean).filter(Boolean)
+    return paragraphs.length > 1 ? paragraphs : [text]
+  }
+  const summaryValue = item.summary ?? item.shortDescription ?? item.description
+  const summary = typeof summaryValue === 'string' ? clean(summaryValue).slice(0, 160) : ''
+  const featuresValue = item.features ?? item.keyFeatures ?? item.capabilities
+  const features = Array.isArray(featuresValue) ? featuresValue.flatMap((feature) => {
+    if (!feature || typeof feature !== 'object') return []
+    const record = feature as Record<string, unknown>
+    const title = record.title ?? record.name
+    const description = record.description ?? record.detail ?? record.benefit
+    return typeof title === 'string' && typeof description === 'string' ? [{ title: clean(title).slice(0, 90), description: clean(description).slice(0, 400) }] : []
+  }).filter((feature) => feature.title.length >= 3 && feature.description.length >= 20).slice(0, 8) : []
+  let overview = stringList(item.overview ?? item.overviewParagraphs ?? item.details ?? item.longDescription).filter((text) => text.length >= 40).slice(0, 4)
+  if (overview.length < 2 && features.length >= 4) {
+    overview = [
+      `${summary} ${features.slice(0, 2).map((feature) => feature.description).join(' ')}`,
+      features.slice(2, 5).map((feature) => `${feature.title}: ${feature.description}`).join(' '),
+    ].map(clean).filter((text) => text.length >= 40).slice(0, 4)
+  }
+  const idealFor = stringList(item.idealFor ?? item.targetAudience ?? item.bestFor ?? item.suitableFor).filter((text) => text.length >= 10).slice(0, 6)
+  const limitations = stringList(item.limitations ?? item.considerations ?? item.caveats ?? item.verifyBeforeBuying).filter((text) => text.length >= 10).slice(0, 6)
   if (summary.length < 50) throw new Error(`summary too short (${summary.length})`)
   if (overview.length < 2) throw new Error(`not enough overview paragraphs (${overview.length})`)
   if (features.length < 4) throw new Error(`not enough usable features (${features.length})`)
