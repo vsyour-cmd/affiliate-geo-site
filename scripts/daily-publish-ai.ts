@@ -142,7 +142,15 @@ async function requestDeepSeek(product: Record<string, unknown>, research: Resea
   const response = await fetch('https://api.deepseek.com/chat/completions', {
     method: 'POST',
     headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ model, messages: [{ role: 'system', content: system }, { role: 'user', content: user }], response_format: { type: 'json_object' }, max_tokens: 12_000, temperature: 0.4, stream: false }),
+    body: JSON.stringify({
+      model,
+      messages: [{ role: 'system', content: system }, { role: 'user', content: user }],
+      response_format: { type: 'json_object' },
+      thinking: { type: 'disabled' },
+      max_tokens: 12_000,
+      temperature: 0.4,
+      stream: false,
+    }),
     signal: AbortSignal.timeout(120_000),
   })
   if (!response.ok) throw new Error(`DeepSeek HTTP ${response.status}: ${(await response.text()).slice(0, 500)}`)
@@ -206,6 +214,7 @@ async function runRemote() {
     'x-automation-secret': automationSecret,
   }
   const startedAt = new Date()
+  const dryRun = process.env.AI_DRY_RUN === 'true'
   const date = startedAt.toISOString().slice(0, 10)
   const contextResponse = await fetchAutomation(new URL('/automation/context', baseURL), {
     headers: automationHeaders,
@@ -217,7 +226,7 @@ async function runRemote() {
   }
   if (!context.products.length) throw new Error('No active products are available for article generation')
   const publishedToday = context.articles.find((article) => article.aiGenerated === true && article.publishedAt?.startsWith(date))
-  if (publishedToday) {
+  if (publishedToday && !dryRun) {
     await writeReport({ status: 'skipped', reason: 'daily-cap-reached', date, articleId: publishedToday.id, slug: publishedToday.slug })
     console.log(JSON.stringify({ event: 'daily-publish-skipped', reason: 'daily-cap-reached', articleId: publishedToday.id }))
     return
@@ -226,7 +235,7 @@ async function runRemote() {
   const { product, snapshot, research } = await findResearchableProduct(context.products, dayIndex)
   const automationKey = `${date}:${product.id}`
   const existing = context.articles.find((article) => article.automationKey === automationKey)
-  if (existing) {
+  if (existing && !dryRun) {
     await writeReport({ status: 'skipped', reason: 'already-published', date, automationKey, articleId: existing.id, slug: existing.slug })
     console.log(JSON.stringify({ event: 'daily-publish-skipped', automationKey, articleId: existing.id }))
     return
@@ -246,6 +255,12 @@ async function runRemote() {
         continue
       }
       const slug = `${slugify(article.title) || `article-${date}`}-${date}`
+      if (dryRun) {
+        const report = { status: 'dry-run', date, automationKey, slug, title: article.title, model, attempt, quality: lastQuality, usage: result.usage, productFeatures: productEnrichment.features.length, evidenceSources: research.sources.length }
+        await writeReport(report)
+        console.log(JSON.stringify({ event: 'daily-publish-dry-run-complete', ...report }))
+        return
+      }
       const publishResponse = await fetchAutomation(`${baseURL}/automation/publish`, {
         method: 'POST', headers: { ...automationHeaders, 'Content-Type': 'application/json' },
         body: JSON.stringify({ title: article.title, slug, excerpt: article.excerpt, content: richText(article, research), productId: product.id, productEnrichment, categoryId: typeof product.category === 'object' ? product.category.id : product.category, automationKey, model, promptVersion, qualityScore: lastQuality.score, qualityNotes: [...lastQuality.notes, ...research.warnings], sourceSnapshot: { product: snapshot, research }, publishedAt: startedAt.toISOString() }),
@@ -259,6 +274,7 @@ async function runRemote() {
       return
     } catch (error) {
       lastError = error instanceof Error ? error.message : String(error)
+      console.warn(JSON.stringify({ event: 'daily-publish-generation-retry', attempt, reason: lastError }))
       feedback = [`Previous generation failed schema, API, or publishing validation: ${lastError}`]
     }
   }
@@ -305,6 +321,7 @@ async function run() {
       result = await requestDeepSeek(snapshot, research, recentTitles, feedback)
     } catch (error) {
       lastError = error instanceof Error ? error.message : String(error)
+      console.warn(JSON.stringify({ event: 'daily-publish-generation-retry', attempt, reason: lastError }))
       feedback = [`Previous generation failed schema or API validation: ${lastError}`]
       continue
     }

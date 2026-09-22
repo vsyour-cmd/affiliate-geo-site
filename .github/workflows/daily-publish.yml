@@ -10,6 +10,11 @@ on:
         description: 'Marketplace resume offset (diagnostics/recovery only)'
         required: false
         default: '0'
+      dry_run:
+        description: 'Validate research and DeepSeek output without publishing'
+        required: false
+        type: boolean
+        default: false
 
 concurrency:
   group: daily-ai-publish
@@ -33,6 +38,7 @@ jobs:
       NEXT_PUBLIC_SITE_URL: ${{ vars.NEXT_PUBLIC_SITE_URL }}
       PUBLISH_API_URL: ${{ vars.AUTOMATION_API_URL || vars.NEXT_PUBLIC_SITE_URL }}
       AUTOMATION_SECRET: ${{ secrets.AUTOMATION_SECRET }}
+      AI_DRY_RUN: ${{ inputs.dry_run || 'false' }}
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
     steps:
@@ -45,6 +51,7 @@ jobs:
       - name: Generate and publish one gated article
         run: npm run daily:publish
       - name: Verify publication in production D1
+        if: ${{ !inputs.dry_run }}
         run: npm run daily:verify
       - name: Upload publication evidence
         if: always()
