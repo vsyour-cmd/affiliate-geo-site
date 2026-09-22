@@ -5,7 +5,9 @@ import config from '@payload-config'
 import { ProductDescription } from '@/components/ProductDescription'
 import { ProductActions } from '@/components/ProductActions'
 import { ProductFacts } from '@/components/ProductFacts'
+import { ProductDecisionSupport } from '@/components/ProductDecisionSupport'
 import { getLanguage, getMessages } from '@/lib/i18n'
+import { loadProductSupport } from '@/lib/product-support'
 
 const countryToRegion: Record<string, string> = { AU:'au', CN:'cn', DE:'de', FR:'fr', GB:'uk', JP:'jp', US:'us' }
 
@@ -22,6 +24,7 @@ export default async function ProductRedirectPage({ params }: { params: Promise<
 
   const regionCodes = (product.geoRegions || []).map((item) => typeof item === 'object' ? item.code : null).filter(Boolean) as string[]
   if (!regionCodes.length) {
+    const support = await loadProductSupport(payload, product, language)
     return (
       <main className="shell product-layout">
         <article>
@@ -32,6 +35,7 @@ export default async function ProductRedirectPage({ params }: { params: Promise<
           {product.marketplaceImageUrl ? <figure className="product-hero"><img src={product.marketplaceImageUrl} alt={`${product.name} product illustration`} /></figure> : null}
           <section className="product-overview"><h2>{t.overview}</h2>{product.description ? <ProductDescription data={product.description} /> : null}</section>
           <ProductFacts product={product} labels={{ title:t.details, vendor:t.vendor, resources:t.resources, salesPage:t.salesPage }} />
+          <ProductDecisionSupport current={product} alternatives={support.alternatives} articles={support.articles} labels={{ compare:t.compare, compareIntro:t.compareIntro, current:t.currentChoice, alternative:t.alternative, viewDetails:t.viewDetails, guides:t.relatedGuides, guidesIntro:t.relatedGuidesIntro, readGuide:t.readGuide }} />
         </article>
         <aside><div className="offer-box"><span className="eyebrow">{t.currentPrice}</span><div className="price">{product.pricing?.currency} {product.pricing?.amount}</div><p>{t.priceNote}</p><a className="button" href={product.affiliateUrl} target="_blank" rel="nofollow sponsored noopener noreferrer">{t.visit}</a><p style={{fontSize:'.8rem'}}>{t.affiliateNote}</p></div></aside>
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({ '@context':'https://schema.org', '@type':'Product', name:product.name, description:product.shortDescription, offers:{ '@type':'Offer', price:product.pricing?.amount, priceCurrency:product.pricing?.currency, availability:'https://schema.org/InStock', url:product.affiliateUrl } }).replace(/</g, '\\u003c') }} />

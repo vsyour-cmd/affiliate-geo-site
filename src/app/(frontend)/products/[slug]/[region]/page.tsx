@@ -6,7 +6,9 @@ import config from '@payload-config'
 import { ProductDescription } from '@/components/ProductDescription'
 import { ProductActions } from '@/components/ProductActions'
 import { ProductFacts } from '@/components/ProductFacts'
+import { ProductDecisionSupport } from '@/components/ProductDecisionSupport'
 import { getLanguage, getMessages } from '@/lib/i18n'
+import { loadProductSupport } from '@/lib/product-support'
 
 type Props = { params: Promise<{ slug: string; region: string }> }
 
@@ -48,6 +50,7 @@ export default async function ProductRegionPage({ params }: Props) {
   const description = geoContent?.localizedDescription || product.description
   const price = geoContent?.localizedPrice ?? product.pricing?.amount
   const currency = geoContent?.localizedCurrency || product.pricing?.currency
+  const support = await loadProductSupport(await getPayload({ config }), product, language)
 
   return (
     <main className="shell product-layout">
@@ -59,6 +62,7 @@ export default async function ProductRegionPage({ params }: Props) {
         {product.marketplaceImageUrl ? <figure className="product-hero"><img src={product.marketplaceImageUrl} alt={`${name} product illustration`} /></figure> : null}
         <section className="product-overview"><h2>{t.overview}</h2>{description ? <ProductDescription data={description} /> : null}</section>
         <ProductFacts product={product} labels={{ title:t.details, vendor:t.vendor, resources:t.resources, salesPage:t.salesPage }} />
+        <ProductDecisionSupport current={product} alternatives={support.alternatives} articles={support.articles} labels={{ compare:t.compare, compareIntro:t.compareIntro, current:t.currentChoice, alternative:t.alternative, viewDetails:t.viewDetails, guides:t.relatedGuides, guidesIntro:t.relatedGuidesIntro, readGuide:t.readGuide }} />
         {product.features?.length ? <section><h2>{t.features}</h2><ul className="features">{product.features.map((feature) => <li key={feature.id || feature.title}><strong>{feature.title}</strong>{feature.description ? <div>{feature.description}</div> : null}</li>)}</ul></section> : null}
         <section><h2>{t.availableRegions}</h2><div className="regions">{product.geoRegions?.map((item) => typeof item === 'object' ? <Link key={item.id} href={`/products/${slug}/${item.code}`}>{item.code.toUpperCase()}</Link> : null)}</div></section>
       </article>
