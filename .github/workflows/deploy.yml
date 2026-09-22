@@ -49,6 +49,11 @@ jobs:
             echo "::error::Cloudflare API token verification did not return active status."
             exit 1
           fi
+          SERVICE_STATUS="$(curl --silent --output /dev/null --write-out '%{http_code}' "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/services/affiliate-geo-site" -H "Authorization: Bearer $NORMALIZED_TOKEN")"
+          if [ "$SERVICE_STATUS" != "200" ]; then
+            echo "::error::Cloudflare token cannot access Worker affiliate-geo-site (HTTP $SERVICE_STATUS). Grant Workers Scripts Edit or Worker Editor access for this account and Worker."
+            exit 1
+          fi
       - name: Generate binding and Payload types
         run: npm run generate:types
       - name: Lint
