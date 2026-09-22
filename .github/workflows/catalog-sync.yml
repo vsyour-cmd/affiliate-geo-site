@@ -1,0 +1,42 @@
+name: Digistore24 catalog recovery
+
+on:
+  workflow_dispatch:
+    inputs:
+      start_offset:
+        description: 'Marketplace resume offset'
+        required: true
+        default: '0'
+
+concurrency:
+  group: digistore24-catalog-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+    env:
+      DIGISTORE24_AFFILIATE_ID: ${{ vars.DIGISTORE24_AFFILIATE_ID || 'adminstore' }}
+      CATALOG_START_OFFSET: ${{ inputs.start_offset }}
+      PUBLISH_API_URL: ${{ vars.AUTOMATION_API_URL || vars.NEXT_PUBLIC_SITE_URL }}
+      AUTOMATION_SECRET: ${{ secrets.AUTOMATION_SECRET }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Sync Digistore24 Marketplace catalog
+        run: npm run daily:catalog-sync
+      - name: Upload catalog evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: catalog-sync-${{ github.run_id }}
+          path: artifacts/digistore24-catalog-report.json
+          if-no-files-found: warn
+          retention-days: 30

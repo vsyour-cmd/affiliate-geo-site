@@ -43,10 +43,6 @@ jobs:
         run: npm run daily:publish
       - name: Verify publication in production D1
         run: npm run daily:verify
-      - name: Sync complete Digistore24 Marketplace catalog
-        id: catalog_sync
-        continue-on-error: true
-        run: npm run daily:catalog-sync
       - name: Upload publication evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -55,6 +51,3 @@ jobs:
           path: artifacts/
           if-no-files-found: warn
           retention-days: 30
-      - name: Report catalog sync failure
-        if: steps.catalog_sync.outcome == 'failure'
-        run: exit 1
