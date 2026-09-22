@@ -31,6 +31,15 @@ jobs:
       - run: npm run lint
       - run: npm run typecheck
       - name: Deploy Worker application
-        run: npm run deploy:app
+        id: deploy_app
+        continue-on-error: true
+        shell: bash
+        run: set -o pipefail; npm run deploy:app 2>&1 | tee deploy-app.log
+      - name: Report Worker deployment failure
+        if: steps.deploy_app.outcome == 'failure'
+        shell: bash
+        run: |
+          grep -Ei 'error|failed|exceeded|unauthorized|forbidden|D1|wrangler' deploy-app.log | tail -n 20 | sed 's/^/::error::/'
+          exit 1
       - name: Apply D1 migrations
         run: npm run deploy:database
