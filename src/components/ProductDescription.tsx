@@ -8,7 +8,7 @@ function extractText(value: unknown): string {
   const ownText = typeof node.text === 'string' ? node.text : ''
   const childText = Array.isArray(node.children) ? node.children.map(extractText).join(' ') : ''
   if ('root' in value) return extractText((value as { root?: unknown }).root)
-  return `${ownText} ${childText}`.replace(/\s+/g, ' ').trim()
+  return `${ownText} ${childText}`.replace(/\s*\[S\d+\]/gi, '').replace(/\s+/g, ' ').trim()
 }
 
 function linkedText(text: string, affiliateUrl?: string): ReactNode[] {

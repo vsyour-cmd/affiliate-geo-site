@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
           { acceptsAffiliationsAutomatically: { equals: true } },
         ],
       },
-      limit: 100,
+      limit: 1000,
       depth: 1,
       sort: 'slug',
       select: {

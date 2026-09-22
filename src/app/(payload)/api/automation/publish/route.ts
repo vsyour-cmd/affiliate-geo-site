@@ -40,12 +40,14 @@ function validProductEnrichment(value: PublishBody['productEnrichment'] | undefi
 }
 
 function productEnrichmentData(product: PublishBody['productEnrichment']) {
-  const capabilityText = product.features.map((feature) => `${feature.title}: ${feature.description}`).join(' - ')
-  const text = `${product.overview.join(' ')} --- Key capabilities - ${capabilityText} --- Who this product is for - ${product.idealFor.join(' - ')} --- What to verify before buying - ${product.limitations.join(' - ')}`
+  const clean = (value: string) => value.replace(/\s*\[S\d+\]/gi, '').replace(/\s+/g, ' ').trim()
+  const features = product.features.map((feature) => ({ title: clean(feature.title), description: clean(feature.description) }))
+  const capabilityText = features.map((feature) => `${feature.title}: ${feature.description}`).join(' - ')
+  const text = `${product.overview.map(clean).join(' ')} --- Key capabilities - ${capabilityText} --- Who this product is for - ${product.idealFor.map(clean).join(' - ')} --- What to verify before buying - ${product.limitations.map(clean).join(' - ')}`
   return {
-    shortDescription: product.summary,
+    shortDescription: clean(product.summary),
     description: { root: { type: 'root', version: 1, direction: 'ltr' as const, format: '' as const, indent: 0, children: [{ type: 'paragraph', version: 1, direction: 'ltr' as const, format: '' as const, indent: 0, children: [{ type: 'text', version: 1, text, detail: 0, format: 0, mode: 'normal', style: '' }] }] } },
-    features: product.features,
+    features,
     lastUpdated: new Date().toISOString(),
   }
 }
