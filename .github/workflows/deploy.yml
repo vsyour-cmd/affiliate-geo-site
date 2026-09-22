@@ -30,4 +30,7 @@ jobs:
       - run: npm run generate:types
       - run: npm run lint
       - run: npm run typecheck
-      - run: npm run deploy
+      - name: Deploy Worker application
+        run: npm run deploy:app
+      - name: Apply D1 migrations
+        run: npm run deploy:database
