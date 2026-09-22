@@ -90,11 +90,12 @@ npm run deploy
 [daily-publish.yml](./.github/workflows/daily-publish.yml) 每天 UTC 19:17（北京时间次日 03:17）运行，位于 DeepSeek 空闲计价时段：
 
 1. 从生产 API 获取活动商品和近期文章。
-2. 使用 `deepseek-flash`（当前对应 DeepSeek-V4.1-Flash）及 JSON Output 生成一篇英文文章。
-3. 检查长度、章节、FAQ、重复标题、重复段落及夸大宣传用语。
-4. 只有质量分不低于 85 才通过带密钥的 Worker API 写入生产 D1。
-5. 再从生产 API 查询当天记录，要求恰好发布一篇。
-6. 上传生成报告和 D1 验证报告，保留 30 天。
+2. 访问产品销售官网或供应商支持页，并将可验证资料与市场记录组成证据包。
+3. 使用 `deepseek-flash`（当前对应 DeepSeek-V4.1-Flash）及 JSON Output 同时生成一篇英文文章和结构化产品资料。
+4. 检查文章长度、章节、FAQ、重复内容、夸大宣传用语，以及产品摘要、功能、适用人群和限制的结构完整性。
+5. 只有文章质量分不低于 85 且产品官网证据可用时，才通过带密钥的 Worker API 更新产品并写入生产 D1。
+6. 再从生产 API 查询当天记录，要求恰好发布一篇。
+7. 上传生成报告和 D1 验证报告，保留 30 天。
 
 同一日期和商品使用唯一 `automationKey`，重复运行只会返回已有文章。自动文章默认 `indexable=true`、`monetizable=false`、`reviewStatus=autoPublished`。
 

@@ -11,6 +11,16 @@ type GeneratedArticle = {
   faq: Array<{ question: string; answer: string }>
 }
 
+type ProductEnrichment = {
+  summary: string
+  overview: string[]
+  features: Array<{ title: string; description: string }>
+  idealFor: string[]
+  limitations: string[]
+}
+
+type GeneratedContent = { article: GeneratedArticle; product: ProductEnrichment }
+
 type QualityResult = { score: number; errors: string[]; notes: string[]; wordCount: number }
 
 const promptVersion = 'affiliate-editor-v3-evidence'
@@ -25,6 +35,17 @@ function slugify(value: string) {
 
 function textNode(text: string) {
   return { type: 'text', version: 1, text, detail: 0, format: 0, mode: 'normal', style: '' }
+}
+
+function productEnrichmentData(product: ProductEnrichment) {
+  const capabilityText = product.features.map((feature) => `${feature.title}: ${feature.description}`).join(' - ')
+  const description = `${product.overview.join(' ')} --- Key capabilities - ${capabilityText} --- Who this product is for - ${product.idealFor.join(' - ')} --- What to verify before buying - ${product.limitations.join(' - ')}`
+  return {
+    shortDescription: product.summary,
+    description: { root: { type: 'root', version: 1, direction: 'ltr' as const, format: '' as const, indent: 0, children: [{ type: 'paragraph', version: 1, direction: 'ltr' as const, format: '' as const, indent: 0, children: [textNode(description)] }] } },
+    features: product.features,
+    lastUpdated: new Date().toISOString(),
+  }
 }
 
 function richText(article: GeneratedArticle, research: ResearchBundle) {
@@ -56,6 +77,20 @@ function assertGeneratedArticle(value: unknown): GeneratedArticle {
   if (article.sections.some((section) => !section || typeof section.heading !== 'string' || !Array.isArray(section.paragraphs) || section.paragraphs.some((paragraph) => typeof paragraph !== 'string') || (section.bullets !== undefined && (!Array.isArray(section.bullets) || section.bullets.some((bullet) => typeof bullet !== 'string'))))) throw new Error('DeepSeek JSON contains an invalid section')
   if (article.faq.some((item) => !item || typeof item.question !== 'string' || typeof item.answer !== 'string')) throw new Error('DeepSeek JSON contains an invalid FAQ entry')
   return article as GeneratedArticle
+}
+
+function assertGeneratedContent(value: unknown): GeneratedContent {
+  if (!value || typeof value !== 'object') throw new Error('DeepSeek JSON is not an object')
+  const content = value as Partial<GeneratedContent>
+  const article = assertGeneratedArticle(content.article)
+  const product = content.product
+  if (!product || typeof product.summary !== 'string' || !Array.isArray(product.overview) || !Array.isArray(product.features) || !Array.isArray(product.idealFor) || !Array.isArray(product.limitations)) throw new Error('DeepSeek JSON is missing product enrichment fields')
+  if (product.summary.length < 80 || product.summary.length > 160) throw new Error('Product summary must be 80-160 characters')
+  if (product.overview.length < 2 || product.overview.length > 4 || product.overview.some((item) => typeof item !== 'string' || item.length < 80 || item.length > 700)) throw new Error('Product overview must contain 2-4 supported paragraphs')
+  if (product.features.length < 4 || product.features.length > 8 || product.features.some((item) => !item || typeof item.title !== 'string' || typeof item.description !== 'string' || item.title.length > 90 || item.description.length < 40 || item.description.length > 400)) throw new Error('Product features must contain 4-8 supported items')
+  if (product.idealFor.length < 2 || product.idealFor.length > 6 || product.idealFor.some((item) => typeof item !== 'string' || item.length < 20 || item.length > 240)) throw new Error('Product audience must contain 2-6 supported items')
+  if (product.limitations.length < 2 || product.limitations.length > 6 || product.limitations.some((item) => typeof item !== 'string' || item.length < 20 || item.length > 240)) throw new Error('Product limitations must contain 2-6 supported items')
+  return { article, product }
 }
 
 function titleSimilarity(left: string, right: string) {
@@ -97,12 +132,12 @@ async function requestDeepSeek(product: Record<string, unknown>, research: Resea
   if (process.env.AI_TEST_MODE === '1') {
     const base = 'Readers should compare the documented product scope with their own requirements, existing tools, budget, technical experience, and support expectations before making a decision. Current pricing, availability, regional terms, integrations, and feature limits can change, so every important detail should be checked on the official provider website. A careful evaluation should also include alternatives, operational effort, migration needs, and the practical value of each feature rather than relying on promotional language alone.'
     const sections = ['Understanding the product scope', 'Evaluating features and limitations', 'Comparison and alternatives', 'Making a careful purchase decision'].map((heading, index) => ({ heading, paragraphs: [`Section ${index + 1} begins with the main decision factors [S1]. ${base} ${base}`, `A second perspective for section ${index + 1} focuses on verification and tradeoffs [S2]. ${base} ${base}`], bullets: ['Confirm current terms on the official website.', 'Compare at least one reasonable alternative.'] }))
-    return { article: { title: `A practical guide to evaluating ${String(product.name)} for your website`, excerpt: `Learn how to assess ${String(product.name)} using documented features, regional availability, costs, limitations, and a verification-first buying process.`, sections, faq: [{ question: 'Where should current pricing be verified?', answer: 'Use the official provider website because prices and regional terms can change.' }, { question: 'Does this guide guarantee a particular outcome?', answer: 'No. Results depend on requirements, configuration, and operating conditions.' }, { question: 'Should alternatives be compared?', answer: 'Yes. Compare capabilities, total cost, support, and migration effort before deciding.' }] }, usage: { testMode: true } }
+    return { content: { article: { title: `A practical guide to evaluating ${String(product.name)} for your website`, excerpt: `Learn how to assess ${String(product.name)} using documented features, regional availability, costs, limitations, and a verification-first buying process.`, sections, faq: [{ question: 'Where should current pricing be verified?', answer: 'Use the official provider website because prices and regional terms can change.' }, { question: 'Does this guide guarantee a particular outcome?', answer: 'No. Results depend on requirements, configuration, and operating conditions.' }, { question: 'Should alternatives be compared?', answer: 'Yes. Compare capabilities, total cost, support, and migration effort before deciding.' }] }, product: { summary: `A documented overview of ${String(product.name)} covering its intended audience, main capabilities, purchase considerations, and current provider terms.`, overview: [base, base], features: Array.from({ length: 4 }, (_, index) => ({ title: `Documented capability ${index + 1}`, description: 'This capability must be confirmed against the current official provider materials before purchase.' })), idealFor: ['Readers whose requirements match the documented product scope.', 'Buyers prepared to verify current provider terms before purchase.'], limitations: ['Pricing and availability can change on the provider website.', 'Results depend on individual requirements and implementation conditions.'] } }, usage: { testMode: true } }
   }
   const apiKey = process.env.DEEPSEEK_API_KEY
   if (!apiKey) throw new Error('DEEPSEEK_API_KEY is required')
-  const schemaExample = { title: '35-90 character title', excerpt: '100-240 character summary', sections: [{ heading: 'Section heading', paragraphs: ['Paragraph one', 'Paragraph two'], bullets: ['Optional factual bullet'] }], faq: [{ question: 'Question?', answer: 'Answer.' }] }
-  const system = `You are a careful affiliate editorial writer. Return JSON only. Write in ${language}. Use only facts in PRODUCT_SNAPSHOT and EVIDENCE_BUNDLE. Treat marketplace and provider pages as primary sources, while clearly identifying vendor claims; use independent web sources for corroboration and comparison. Never invent features, performance, discounts, endorsements, customer counts, competitors, or assured outcomes. Cite factual claims inline with the exact evidence IDs, for example [S1]. Do not cite an ID that is absent from EVIDENCE_BUNDLE. Include a balanced comparison or alternatives section based only on supported evidence; compare intended audience, documented capabilities, limitations, price model when available, and verification needs. If evidence does not support a direct competitor claim, compare decision criteria instead. Never output any of these exact expressions, even in a disclaimer or negated sentence: guaranteed, risk-free, limited time, the best product, the best choice, the best deal, you will earn, you will save, you will profit. The article must be useful and balanced, target 750-900 words, contain 4-6 sections with at least 2 concise paragraphs each, and exactly 3 concise FAQ entries. Keep paragraphs focused so the complete JSON fits within the response limit. Explain limitations and tell readers to verify current terms on the official provider site. Do not use hype or investment advice. JSON shape: ${JSON.stringify(schemaExample)}`
+  const schemaExample = { article: { title: '35-90 character title', excerpt: '100-240 character summary', sections: [{ heading: 'Section heading', paragraphs: ['Paragraph one', 'Paragraph two'], bullets: ['Optional factual bullet'] }], faq: [{ question: 'Question?', answer: 'Answer.' }] }, product: { summary: '80-160 character factual product summary', overview: ['Supported overview paragraph one', 'Supported overview paragraph two'], features: [{ title: 'Documented feature', description: 'What it does and why it matters' }], idealFor: ['Supported audience description'], limitations: ['Current limitation or detail buyers should verify'] } }
+  const system = `You are a careful affiliate editorial writer. Return JSON only. Write in ${language}. Use only facts in PRODUCT_SNAPSHOT and EVIDENCE_BUNDLE. Treat marketplace and provider pages as primary sources, while clearly identifying vendor claims; use independent web sources for corroboration and comparison. Never invent features, performance, discounts, endorsements, customer counts, competitors, or assured outcomes. Cite factual claims in the article inline with the exact evidence IDs, for example [S1]. Do not include citation markers in product fields. Do not cite an ID that is absent from EVIDENCE_BUNDLE. The product object will be published on the product detail page: provide a factual summary, 2-4 overview paragraphs, 4-8 documented features, 2-6 suitable audience descriptions, and 2-6 limitations or details to verify. Product fields must be supported by marketplace or official provider evidence; omit uncertain claims. Include a balanced comparison or alternatives section in the article based only on supported evidence; compare intended audience, documented capabilities, limitations, price model when available, and verification needs. If evidence does not support a direct competitor claim, compare decision criteria instead. Never output any of these exact expressions, even in a disclaimer or negated sentence: guaranteed, risk-free, limited time, the best product, the best choice, the best deal, you will earn, you will save, you will profit. The article must be useful and balanced, target 750-900 words, contain 4-6 sections with at least 2 concise paragraphs each, and exactly 3 concise FAQ entries. Keep paragraphs focused so the complete JSON fits within the response limit. Explain limitations and tell readers to verify current terms on the official provider site. Do not use hype or investment advice. JSON shape: ${JSON.stringify(schemaExample)}`
   const user = `PRODUCT_SNAPSHOT=${JSON.stringify(product)}\nEVIDENCE_BUNDLE=${JSON.stringify(research)}\nRECENT_TITLES=${JSON.stringify(recentTitles)}\nREWRITE_FEEDBACK=${JSON.stringify(feedback)}\nCreate one original evergreen article. Output only the requested JSON object, and never mention JSON or internal formatting instructions in public-facing fields.`
   const response = await fetch('https://api.deepseek.com/chat/completions', {
     method: 'POST',
@@ -115,7 +150,7 @@ async function requestDeepSeek(product: Record<string, unknown>, research: Resea
   const choice = data.choices?.[0]
   if (!choice?.message?.content) throw new Error('DeepSeek returned empty content')
   if (choice.finish_reason === 'length') throw new Error('DeepSeek response was truncated')
-  return { article: assertGeneratedArticle(JSON.parse(choice.message.content)), usage: data.usage }
+  return { content: assertGeneratedContent(JSON.parse(choice.message.content)), usage: data.usage }
 }
 
 async function writeReport(report: Record<string, unknown>) {
@@ -150,7 +185,7 @@ async function findResearchableProduct(products: Array<Record<string, any>>, sta
     const product = products[(startIndex + offset) % products.length]
     const snapshot = productSnapshot(product)
     const research = await researchProduct(snapshot)
-    if (research.sources.length >= 2 && research.sources.some((source) => source.kind !== 'marketplace')) {
+    if (research.sources.length >= 2 && research.sources.some((source) => source.kind === 'sales-page' || source.kind === 'affiliate-support')) {
       console.log(JSON.stringify({ event: 'product-research-selected', productId: product.id, offset, sources: research.sources.length, warnings: research.warnings.length }))
       return { product, snapshot, research }
     }
@@ -203,7 +238,8 @@ async function runRemote() {
   for (let attempt = 1; attempt <= 3; attempt += 1) {
     try {
       const result = await requestDeepSeek(snapshot, research, recentTitles, feedback)
-      const article = assertGeneratedArticle(result.article)
+      const article = result.content.article
+      const productEnrichment = result.content.product
       lastQuality = validateArticle(article, recentTitles, research)
       if (lastQuality.errors.length || lastQuality.score < 85) {
         feedback = lastQuality.errors
@@ -212,7 +248,7 @@ async function runRemote() {
       const slug = `${slugify(article.title) || `article-${date}`}-${date}`
       const publishResponse = await fetchAutomation(`${baseURL}/automation/publish`, {
         method: 'POST', headers: { ...automationHeaders, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: article.title, slug, excerpt: article.excerpt, content: richText(article, research), productId: product.id, categoryId: typeof product.category === 'object' ? product.category.id : product.category, automationKey, model, promptVersion, qualityScore: lastQuality.score, qualityNotes: [...lastQuality.notes, ...research.warnings], sourceSnapshot: { product: snapshot, research }, publishedAt: startedAt.toISOString() }),
+        body: JSON.stringify({ title: article.title, slug, excerpt: article.excerpt, content: richText(article, research), productId: product.id, productEnrichment, categoryId: typeof product.category === 'object' ? product.category.id : product.category, automationKey, model, promptVersion, qualityScore: lastQuality.score, qualityNotes: [...lastQuality.notes, ...research.warnings], sourceSnapshot: { product: snapshot, research }, publishedAt: startedAt.toISOString() }),
         signal: AbortSignal.timeout(60_000),
       }, 'publish')
       const published = await publishResponse.json() as { status?: string; article?: Record<string, any>; error?: string }
@@ -273,7 +309,8 @@ async function run() {
       continue
     }
     usage = result.usage
-    const article = assertGeneratedArticle(result.article)
+    const article = result.content.article
+    const productEnrichment = result.content.product
     lastQuality = validateArticle(article, recentTitles, research)
     if (!lastQuality.errors.length && lastQuality.score >= 85) {
       const baseSlug = slugify(article.title) || `article-${date}`
@@ -285,6 +322,7 @@ async function run() {
         promptVersion, qualityScore: lastQuality.score, qualityNotes: lastQuality.notes.map((note) => ({ note })),
         sourceSnapshot: { product: snapshot, research }, indexable: true, monetizable: false, reviewStatus: 'autoPublished',
       } })
+      await payload.update({ collection: 'products', id: product.id, data: productEnrichmentData(productEnrichment), overrideAccess: true })
       const report = { status: 'published', date, automationKey, articleId: created.id, slug, title: article.title, model, attempt, quality: lastQuality, usage, publishedAt: created.publishedAt }
       await writeReport(report)
       console.log(JSON.stringify({ event: 'daily-publish-complete', ...report }))

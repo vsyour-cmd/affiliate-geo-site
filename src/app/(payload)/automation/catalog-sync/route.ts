@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
       limit: sourceIds.length,
       pagination: false,
       depth: 0,
-      select: { affiliateUrl: true, sourceData: true, sourceId: true },
+      select: { affiliateUrl: true, sourceData: true, sourceId: true, features: true },
       overrideAccess: true,
     }),
     payload.find({
@@ -94,7 +94,7 @@ export async function POST(request: NextRequest) {
       name: offer.label,
       slug: `${slugify(offer.label) || 'product'}-${offer.productId}`,
       source: 'digistore24', sourceId, productId: offer.productId, vendorId: offer.vendorId, vendorName: offer.vendorName,
-      shortDescription: description.slice(0, 160), description: richText(description), category: categoryId,
+      category: categoryId,
       status: 'active' as const, affiliateUrl: offer.promoLink, salesPageUrl: offer.salesPageUrl,
       affiliateSupportPageUrl: offer.affiliateSupportPageUrl, marketplaceImageUrl: offer.imageUrl,
       acceptsAffiliationsAutomatically: Boolean(offer.acceptsAffiliationsAutomatically), approvalStatus: offer.approvalStatus,
@@ -106,10 +106,11 @@ export async function POST(request: NextRequest) {
       lastSeenAt: body.fetchedAt || new Date().toISOString(), sourceData: offer,
     }
     if (existing) {
-      await payload.update({ collection: 'products', id: existing.id, data, depth: 0, select: { sourceId: true }, overrideAccess: true })
+      const updateData = existing.features?.length ? data : { ...data, shortDescription: description.slice(0, 160), description: richText(description) }
+      await payload.update({ collection: 'products', id: existing.id, data: updateData, depth: 0, select: { sourceId: true }, overrideAccess: true })
       updated += 1
     } else {
-      await payload.create({ collection: 'products', data, depth: 0, select: { sourceId: true }, overrideAccess: true })
+      await payload.create({ collection: 'products', data: { ...data, shortDescription: description.slice(0, 160), description: richText(description) }, depth: 0, select: { sourceId: true }, overrideAccess: true })
       created += 1
     }
     } catch (error) {
