@@ -12,6 +12,7 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     environment: production
     permissions:
       contents: read
@@ -26,20 +27,31 @@ jobs:
         with:
           node-version: '22'
           cache: npm
-      - run: npm ci
-      - run: npm run generate:types
-      - run: npm run lint
-      - run: npm run typecheck
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Validate Cloudflare credentials
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "::error::CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID must be configured in the production environment."
+            exit 1
+          fi
+          npx wrangler whoami
+      - name: Generate binding and Payload types
+        run: npm run generate:types
+      - name: Lint
+        run: npm run lint
+      - name: Type check
+        run: npm run typecheck
       - name: Deploy Worker application
-        id: deploy_app
-        continue-on-error: true
         shell: bash
         run: set -o pipefail; npm run deploy:app 2>&1 | tee deploy-app.log
-      - name: Report Worker deployment failure
-        if: steps.deploy_app.outcome == 'failure'
-        shell: bash
-        run: |
-          grep -Ei 'error|failed|exceeded|unauthorized|forbidden|D1|wrangler' deploy-app.log | tail -n 20 | sed 's/^/::error::/'
-          exit 1
       - name: Apply D1 migrations
         run: npm run deploy:database
+      - name: Upload deployment diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: deploy-diagnostics-${{ github.run_id }}
+          path: deploy-app.log
+          if-no-files-found: ignore
+          retention-days: 14
