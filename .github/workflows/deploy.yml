@@ -30,11 +30,20 @@ jobs:
       - name: Install locked dependencies
         run: npm ci
       - name: Validate Cloudflare credentials
+        shell: bash
         run: |
           if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
             echo "::error::CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID must be configured in the production environment."
             exit 1
           fi
+          NORMALIZED_TOKEN="${CLOUDFLARE_API_TOKEN#Bearer }"
+          NORMALIZED_TOKEN="${NORMALIZED_TOKEN#bearer }"
+          NORMALIZED_TOKEN="${NORMALIZED_TOKEN%\"}"
+          NORMALIZED_TOKEN="${NORMALIZED_TOKEN#\"}"
+          NORMALIZED_TOKEN="$(printf '%s' "$NORMALIZED_TOKEN" | tr -d '\r\n')"
+          echo "::add-mask::$NORMALIZED_TOKEN"
+          echo "CLOUDFLARE_API_TOKEN=$NORMALIZED_TOKEN" >> "$GITHUB_ENV"
+          export CLOUDFLARE_API_TOKEN="$NORMALIZED_TOKEN"
           npx wrangler whoami
       - name: Generate binding and Payload types
         run: npm run generate:types
