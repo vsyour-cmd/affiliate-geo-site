@@ -18,7 +18,7 @@ export type ResearchBundle = {
 type SearchResult = { title: string; url: string; description: string }
 
 const MAX_PAGE_BYTES = 600_000
-const MAX_EXCERPT_CHARS = 9_000
+const MAX_EXCERPT_CHARS = 5_000
 
 function decodeEntities(value: string) {
   return value
