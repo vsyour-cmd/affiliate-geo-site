@@ -43,6 +43,7 @@ jobs:
           NORMALIZED_TOKEN="${NORMALIZED_TOKEN#bearer }"
           NORMALIZED_TOKEN="${NORMALIZED_TOKEN#\"}"
           NORMALIZED_TOKEN="${NORMALIZED_TOKEN%\"}"
+          NORMALIZED_TOKEN="$(printf '%s' "$NORMALIZED_TOKEN" | tr -d '[:space:]')"
           if [ "${#NORMALIZED_TOKEN}" -lt 20 ]; then
             echo "::error::CLOUDFLARE_API_TOKEN is empty or too short. Save the complete raw token value."
             exit 1
