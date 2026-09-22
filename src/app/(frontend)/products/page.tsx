@@ -26,7 +26,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
     depth: 0,
     sort,
     locale: language,
-    select: { slug: true, name: true, shortDescription: true, marketplaceImageUrl: true, pricing: true, geoRegions: true },
+    select: { slug: true, name: true, shortDescription: true, marketplaceImageUrl: true, pricing: true },
   })
   return (
     <main className="section shell">
@@ -41,7 +41,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
       {products.docs.length ? <div className="grid">{products.docs.map((product) => (
         <Link className="card" href={`/products/${product.slug}`} key={product.id}>
           {product.marketplaceImageUrl ? <div className="card-media"><img src={product.marketplaceImageUrl} alt="" loading="lazy" /></div> : <div className="card-media card-media-fallback" aria-hidden="true"><span>{product.name.slice(0, 1)}</span></div>}
-          <span className="badge">{product.geoRegions?.length || 0} {t.regions}</span><h2>{product.name}</h2><p>{product.shortDescription}</p>
+          <h2>{product.name}</h2><p>{product.shortDescription}</p>
           <span className="price">{product.pricing?.currency} {product.pricing?.amount}</span>
         </Link>
       ))}</div> : <div className="empty">{t.noProducts}</div>}
