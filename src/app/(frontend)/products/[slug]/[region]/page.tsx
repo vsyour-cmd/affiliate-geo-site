@@ -4,12 +4,14 @@ import { notFound } from 'next/navigation'
 import { getPayload } from 'payload'
 import config from '@payload-config'
 import { ProductDescription } from '@/components/ProductDescription'
+import { getLanguage, getMessages } from '@/lib/i18n'
 
 type Props = { params: Promise<{ slug: string; region: string }> }
 
 async function loadProduct(slug: string, region: string) {
+  const language = await getLanguage()
   const payload = await getPayload({ config })
-  const result = await payload.find({ collection: 'products', where: { and: [{ slug: { equals: slug } }, { status: { equals: 'active' } }] }, limit: 1, depth: 2 })
+  const result = await payload.find({ collection: 'products', where: { and: [{ slug: { equals: slug } }, { status: { equals: 'active' } }] }, limit: 1, depth: 2, locale: language })
   const product = result.docs[0]
   if (!product) return null
   const regionData = (product.geoRegions || []).find((item) => typeof item === 'object' && item.code === region)
@@ -38,6 +40,8 @@ export default async function ProductRegionPage({ params }: Props) {
   const data = await loadProduct(slug, region)
   if (!data) notFound()
   const { product, regionData, geoContent } = data
+  const language = await getLanguage()
+  const t = getMessages(language)
   const name = geoContent?.localizedName || product.name
   const description = geoContent?.localizedDescription || product.description
   const price = geoContent?.localizedPrice ?? product.pricing?.amount
@@ -50,11 +54,11 @@ export default async function ProductRegionPage({ params }: Props) {
         <h1 style={{fontSize:'clamp(2.5rem,6vw,4.5rem)'}}>{name}</h1>
         <p className="lede">{product.shortDescription}</p>
         {product.marketplaceImageUrl ? <figure className="product-hero"><img src={product.marketplaceImageUrl} alt={`${name} product illustration`} /></figure> : null}
-        <section className="product-overview"><h2>Overview</h2>{description ? <ProductDescription data={description} /> : null}</section>
-        {product.features?.length ? <section><h2>Key features</h2><ul className="features">{product.features.map((feature) => <li key={feature.id || feature.title}><strong>{feature.title}</strong>{feature.description ? <div>{feature.description}</div> : null}</li>)}</ul></section> : null}
-        <section><h2>Available regions</h2><div className="regions">{product.geoRegions?.map((item) => typeof item === 'object' ? <Link key={item.id} href={`/products/${slug}/${item.code}`}>{item.code.toUpperCase()}</Link> : null)}</div></section>
+        <section className="product-overview"><h2>{t.overview}</h2>{description ? <ProductDescription data={description} /> : null}</section>
+        {product.features?.length ? <section><h2>{t.features}</h2><ul className="features">{product.features.map((feature) => <li key={feature.id || feature.title}><strong>{feature.title}</strong>{feature.description ? <div>{feature.description}</div> : null}</li>)}</ul></section> : null}
+        <section><h2>{t.availableRegions}</h2><div className="regions">{product.geoRegions?.map((item) => typeof item === 'object' ? <Link key={item.id} href={`/products/${slug}/${item.code}`}>{item.code.toUpperCase()}</Link> : null)}</div></section>
       </article>
-      <aside><div className="offer-box"><span className="eyebrow">Current listed price</span><div className="price">{currency} {price}</div><p>Pricing and availability may change on the provider’s website.</p><a className="button" href={product.affiliateUrl} target="_blank" rel="nofollow sponsored noopener noreferrer">Visit official site →</a><p style={{fontSize:'.8rem'}}>Affiliate disclosure: we may earn a commission if you purchase through this link.</p></div></aside>
+      <aside><div className="offer-box"><span className="eyebrow">{t.currentPrice}</span><div className="price">{currency} {price}</div><p>{t.priceNote}</p><a className="button" href={product.affiliateUrl} target="_blank" rel="nofollow sponsored noopener noreferrer">{t.visit}</a><p style={{fontSize:'.8rem'}}>{t.affiliateNote}</p></div></aside>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({ '@context':'https://schema.org', '@type':'Product', name, description:product.shortDescription, offers:{ '@type':'Offer', price, priceCurrency:currency, availability:'https://schema.org/InStock', url:product.affiliateUrl }, ...(product.reviewScore ? { aggregateRating:{ '@type':'AggregateRating', ratingValue:product.reviewScore, bestRating:5 } } : {}) }).replace(/</g, '\\u003c') }} />
     </main>
   )

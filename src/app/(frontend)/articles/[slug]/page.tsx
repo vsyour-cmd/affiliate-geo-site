@@ -4,12 +4,14 @@ import { notFound } from 'next/navigation'
 import { RichText } from '@payloadcms/richtext-lexical/react'
 import { getPayload } from 'payload'
 import config from '@payload-config'
+import { getLanguage, getMessages, localeTag } from '@/lib/i18n'
 
 type Props = { params: Promise<{ slug: string }> }
 
 async function loadArticle(slug: string) {
+  const language = await getLanguage()
   const payload = await getPayload({ config })
-  const result = await payload.find({ collection: 'articles', where: { and: [{ slug: { equals: slug } }, { status: { equals: 'published' } }] }, limit: 1, depth: 2 })
+  const result = await payload.find({ collection: 'articles', where: { and: [{ slug: { equals: slug } }, { status: { equals: 'published' } }] }, limit: 1, depth: 2, locale: language })
   return result.docs[0] || null
 }
 
@@ -25,5 +27,7 @@ export default async function ArticlePage({ params }: Props) {
   const article = await loadArticle((await params).slug)
   if (!article) notFound()
   const product = typeof article.relatedProduct === 'object' ? article.relatedProduct : null
-  return <main className="content article"><span className="eyebrow">{article.aiGenerated ? 'AI-assisted editorial · quality checked' : 'Editorial'}</span><h1>{article.title}</h1><p className="lede">{article.excerpt}</p><div className="article-meta"><span>{article.publishedAt ? new Date(article.publishedAt).toLocaleDateString('en-US') : ''}</span>{article.aiGenerated ? <span>Quality score: {article.qualityScore}/100</span> : null}<span>Affiliate disclosure included</span></div>{product?.marketplaceImageUrl ? <figure className="article-hero"><img src={product.marketplaceImageUrl} alt={`${product.name} product illustration`} /><figcaption>Product image supplied by the marketplace listing. Verify current details with the provider.</figcaption></figure> : null}<div className="article-body"><RichText data={article.content} /></div>{product ? <aside className="article-cta"><span className="eyebrow">Related product</span><h2>Explore {product.name}</h2><p>{product.shortDescription}</p><Link className="button" href={`/products/${product.slug}`}>View product details</Link></aside> : null}</main>
+  const language = await getLanguage()
+  const t = getMessages(language)
+  return <main className="content article"><span className="eyebrow">{article.aiGenerated ? t.qualityChecked : t.editorialLabel}</span><h1>{article.title}</h1><p className="lede">{article.excerpt}</p><div className="article-meta"><span>{article.publishedAt ? new Date(article.publishedAt).toLocaleDateString(localeTag(language)) : ''}</span>{article.aiGenerated ? <span>{t.qualityScore}: {article.qualityScore}/100</span> : null}<span>{t.included}</span></div>{product?.marketplaceImageUrl ? <figure className="article-hero"><img src={product.marketplaceImageUrl} alt={`${product.name} product illustration`} /><figcaption>{t.imageCaption}</figcaption></figure> : null}<div className="article-body"><RichText data={article.content} /></div>{product ? <aside className="article-cta"><span className="eyebrow">{t.related}</span><h2>{t.exploreProduct} {product.name}</h2><p>{product.shortDescription}</p><Link className="button" href={`/products/${product.slug}`}>{t.viewProduct}</Link></aside> : null}</main>
 }
