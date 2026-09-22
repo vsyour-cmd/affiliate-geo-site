@@ -23,7 +23,7 @@
     "seed": "tsx scripts/seed.ts",
     "seed:remote": "cross-env NODE_ENV=production tsx scripts/seed.ts",
     "smoke": "tsx scripts/smoke-test.ts",
-    "deploy": "npm run deploy:database && npm run deploy:app",
+    "deploy": "npm run deploy:app && npm run deploy:database",
     "deploy:app": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
     "deploy:database": "npm run migrations:sync && wrangler d1 migrations apply D1 --remote && wrangler d1 execute D1 --command \"PRAGMA optimize\" --remote",
     "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
