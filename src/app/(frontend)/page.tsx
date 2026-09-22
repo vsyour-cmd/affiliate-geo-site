@@ -17,14 +17,21 @@ export default async function HomePage() {
   return (
     <main>
       <section className="hero">
-        <div className="shell">
-          <span className="eyebrow">Region-aware recommendations</span>
-          <h1>Find the right product, with the right offer for your market.</h1>
-          <p className="lede">Clear comparisons, localized pricing, and direct links to official providers—without the clutter.</p>
-          <div className="actions">
-            <Link className="button" href="/products">Browse products</Link>
-            <Link className="button secondary" href="/affiliate-disclosure">How we earn</Link>
+        <div className="shell hero-grid">
+          <div>
+            <span className="eyebrow">Independent marketplace intelligence</span>
+            <h1>Make a clearer choice before you buy.</h1>
+            <p className="lede">Explore current marketplace listings and practical, AI-assisted buying guides designed around verification—not hype.</p>
+            <div className="actions">
+              <Link className="button" href="/products">Explore marketplace</Link>
+              <Link className="button secondary" href="/articles">Read buying guides</Link>
+            </div>
           </div>
+          <aside className="trust-panel" aria-label="Our editorial approach">
+            <span className="eyebrow">How this site works</span>
+            <strong>Current products. Clear context. Transparent links.</strong>
+            <ul><li>Daily marketplace data refresh</li><li>AI-assisted articles with quality gates</li><li>Visible affiliate disclosure on every offer</li></ul>
+          </aside>
         </div>
       </section>
       <section className="section shell">
@@ -33,7 +40,8 @@ export default async function HomePage() {
           <div className="grid">
             {products.docs.map((product) => (
               <Link className="card" href={`/products/${product.slug}`} key={product.id}>
-                <span className="badge">{product.status}</span>
+                {product.marketplaceImageUrl ? <div className="card-media"><img src={product.marketplaceImageUrl} alt="" loading="lazy" /></div> : <div className="card-media card-media-fallback" aria-hidden="true"><span>{product.name.slice(0, 1)}</span></div>}
+                <span className="badge">Marketplace listing</span>
                 <h3>{product.name}</h3>
                 <p>{product.shortDescription}</p>
                 <span className="price">{product.pricing?.currency} {product.pricing?.amount}</span>

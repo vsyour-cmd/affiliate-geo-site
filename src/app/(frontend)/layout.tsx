@@ -15,6 +15,7 @@ export default function FrontendLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <body>
+        <a className="skip-link" href="#main-content">Skip to content</a>
         <header className="site-header">
           <div className="shell nav-row">
             <Link className="brand" href="/">Affiliate Marketplace</Link>
@@ -26,7 +27,7 @@ export default function FrontendLayout({ children }: { children: ReactNode }) {
             </nav>
           </div>
         </header>
-        {children}
+        <div id="main-content">{children}</div>
         <footer className="site-footer">
           <div className="shell footer-row">
             <span>© {new Date().getFullYear()} Affiliate Marketplace</span>

@@ -113,6 +113,16 @@ async function writeReport(report: Record<string, unknown>) {
   await fs.writeFile(reportPath, `${JSON.stringify(report, null, 2)}\n`, 'utf8')
 }
 
+async function fetchAutomation(url: string | URL, init: RequestInit, label: string) {
+  for (let attempt = 1; attempt <= 8; attempt += 1) {
+    const response = await fetch(url, init)
+    if (response.ok || ![429, 500, 502, 503, 504].includes(response.status) || attempt === 8) return response
+    console.warn(JSON.stringify({ event: 'automation-api-retry', label, attempt, status: response.status }))
+    await new Promise((resolve) => setTimeout(resolve, Math.min(1_000 * 2 ** attempt, 30_000)))
+  }
+  throw new Error(`${label} request exhausted retries`)
+}
+
 async function runRemote() {
   const baseURL = process.env.PUBLISH_API_URL?.replace(/\/$/, '')
   const automationSecret = process.env.AUTOMATION_SECRET
@@ -124,9 +134,9 @@ async function runRemote() {
   }
   const startedAt = new Date()
   const date = startedAt.toISOString().slice(0, 10)
-  const contextResponse = await fetch(new URL('/automation/context', baseURL), {
+  const contextResponse = await fetchAutomation(new URL('/automation/context', baseURL), {
     headers: automationHeaders,
-  })
+  }, 'context')
   if (!contextResponse.ok) throw new Error(`Automation context API returned ${contextResponse.status}`)
   const context = await contextResponse.json() as {
     products: Array<Record<string, any>>
@@ -167,11 +177,11 @@ async function runRemote() {
         continue
       }
       const slug = `${slugify(article.title) || `article-${date}`}-${date}`
-      const publishResponse = await fetch(`${baseURL}/automation/publish`, {
+      const publishResponse = await fetchAutomation(`${baseURL}/automation/publish`, {
         method: 'POST', headers: { ...automationHeaders, 'Content-Type': 'application/json' },
         body: JSON.stringify({ title: article.title, slug, excerpt: article.excerpt, content: richText(article), productId: product.id, categoryId: typeof product.category === 'object' ? product.category.id : product.category, automationKey, model, promptVersion, qualityScore: lastQuality.score, qualityNotes: lastQuality.notes, sourceSnapshot: snapshot, publishedAt: startedAt.toISOString() }),
         signal: AbortSignal.timeout(60_000),
-      })
+      }, 'publish')
       const published = await publishResponse.json() as { status?: string; article?: Record<string, any>; error?: string }
       if (!publishResponse.ok) throw new Error(`Publish API ${publishResponse.status}: ${published.error || 'unknown error'}`)
       const report = { status: published.status, date, automationKey, articleId: published.article?.id, slug: published.article?.slug || slug, title: article.title, model, attempt, quality: lastQuality, usage: result.usage, publishedAt: published.article?.publishedAt }

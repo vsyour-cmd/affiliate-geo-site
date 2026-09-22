@@ -49,6 +49,7 @@ export default async function ProductRegionPage({ params }: Props) {
         <span className="badge">{regionData.name}</span>
         <h1 style={{fontSize:'clamp(2.5rem,6vw,4.5rem)'}}>{name}</h1>
         <p className="lede">{product.shortDescription}</p>
+        {product.marketplaceImageUrl ? <figure className="product-hero"><img src={product.marketplaceImageUrl} alt={`${name} product illustration`} /></figure> : null}
         <section><h2>Overview</h2>{description ? <RichText data={description} /> : null}</section>
         {product.features?.length ? <section><h2>Key features</h2><ul className="features">{product.features.map((feature) => <li key={feature.id || feature.title}><strong>{feature.title}</strong>{feature.description ? <div>{feature.description}</div> : null}</li>)}</ul></section> : null}
         <section><h2>Available regions</h2><div className="regions">{product.geoRegions?.map((item) => typeof item === 'object' ? <Link key={item.id} href={`/products/${slug}/${item.code}`}>{item.code.toUpperCase()}</Link> : null)}</div></section>

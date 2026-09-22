@@ -80,6 +80,7 @@ async function run() {
     updated += result.updated || 0
     unchanged += result.unchanged || 0
     console.log(JSON.stringify({ event: 'catalog-batch', processed: offset + items.length, total: offers.length, created, updated, unchanged }))
+    await new Promise((resolve) => setTimeout(resolve, 750))
   }
   const report = { status: 'complete', fetchedAt, catalogScope: 'global-marketplace', observedCountRange: [minimumCount, maximumCount], fetchedCount: offers.length, uniqueCount: unique.size, withPromoLink: offers.length, affiliateId, created, updated, unchanged }
   await fs.mkdir(path.dirname(reportPath), { recursive: true })

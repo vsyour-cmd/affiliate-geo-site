@@ -14,6 +14,7 @@ export default async function ProductsPage() {
       <div className="section-head"><div><span className="eyebrow">Marketplace</span><h1 style={{fontSize:'3rem'}}>All products</h1></div></div>
       {products.docs.length ? <div className="grid">{products.docs.map((product) => (
         <Link className="card" href={`/products/${product.slug}`} key={product.id}>
+          {product.marketplaceImageUrl ? <div className="card-media"><img src={product.marketplaceImageUrl} alt="" loading="lazy" /></div> : <div className="card-media card-media-fallback" aria-hidden="true"><span>{product.name.slice(0, 1)}</span></div>}
           <span className="badge">{product.geoRegions?.length || 0} regions</span><h2>{product.name}</h2><p>{product.shortDescription}</p>
           <span className="price">{product.pricing?.currency} {product.pricing?.amount}</span>
         </Link>
