@@ -36,7 +36,7 @@ jobs:
             echo "::error::CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID must be configured in the production environment."
             exit 1
           fi
-          NORMALIZED_TOKEN="$(printf '%s' "$CLOUDFLARE_API_TOKEN" | grep -oE '(cfut_)?[A-Za-z0-9_-]{40,200}' | tail -n 1)"
+          NORMALIZED_TOKEN="$(printf '%s' "$CLOUDFLARE_API_TOKEN" | grep -oE '(cfut_)?[A-Za-z0-9_-]{40,200}' | tail -n 1 || true)"
           if [ -z "$NORMALIZED_TOKEN" ]; then
             echo "::error::CLOUDFLARE_API_TOKEN does not contain a valid raw API token. Save only the token value, without a variable name, JSON, or placeholder text."
             exit 1
