@@ -87,10 +87,10 @@ npm run deploy
 
 ## DeepSeek 每日自动发文
 
-[daily-publish.yml](./.github/workflows/daily-publish.yml) 每天 UTC 01:17（北京时间约 09:17）运行：
+[daily-publish.yml](./.github/workflows/daily-publish.yml) 每天 UTC 19:17（北京时间次日 03:17）运行，位于 DeepSeek 空闲计价时段：
 
 1. 从生产 API 获取活动商品和近期文章。
-2. 使用 DeepSeek JSON Output 生成一篇英文文章。
+2. 使用 `deepseek-flash`（当前对应 DeepSeek-V4.1-Flash）及 JSON Output 生成一篇英文文章。
 3. 检查长度、章节、FAQ、重复标题、重复段落及夸大宣传用语。
 4. 只有质量分不低于 85 才通过带密钥的 Worker API 写入生产 D1。
 5. 再从生产 API 查询当天记录，要求恰好发布一篇。

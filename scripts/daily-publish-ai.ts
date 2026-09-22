@@ -15,6 +15,7 @@ type QualityResult = { score: number; errors: string[]; notes: string[]; wordCou
 
 const promptVersion = 'affiliate-editor-v3-evidence'
 const reportPath = path.resolve('artifacts/daily-publish-report.json')
+// Official API identifier for the current DeepSeek-V4.1-Flash release.
 const model = process.env.DEEPSEEK_MODEL || 'deepseek-flash'
 const language = process.env.AI_ARTICLE_LANGUAGE || 'en'
 
