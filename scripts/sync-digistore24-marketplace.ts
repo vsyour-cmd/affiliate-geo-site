@@ -8,7 +8,7 @@ const affiliateId = process.env.DIGISTORE24_AFFILIATE_ID || 'adminstore'
 const baseURL = (process.env.PUBLISH_API_URL || '').replace(/\/$/, '')
 const secret = process.env.AUTOMATION_SECRET || ''
 const reportPath = path.resolve('artifacts/digistore24-catalog-report.json')
-const catalogBatchSize = 1
+const catalogBatchSize = 25
 
 function pageURL(page: number) {
   const url = new URL(endpoint)
@@ -80,7 +80,7 @@ async function run() {
     updated += result.updated || 0
     unchanged += result.unchanged || 0
     console.log(JSON.stringify({ event: 'catalog-batch', processed: offset + items.length, total: offers.length, created, updated, unchanged }))
-    await new Promise((resolve) => setTimeout(resolve, 750))
+    await new Promise((resolve) => setTimeout(resolve, 250))
   }
   const report = { status: 'complete', fetchedAt, catalogScope: 'global-marketplace', observedCountRange: [minimumCount, maximumCount], fetchedCount: offers.length, uniqueCount: unique.size, withPromoLink: offers.length, affiliateId, created, updated, unchanged }
   await fs.mkdir(path.dirname(reportPath), { recursive: true })

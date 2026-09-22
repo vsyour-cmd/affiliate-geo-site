@@ -8,7 +8,14 @@ export const dynamic = 'force-dynamic'
 
 export default async function ProductsPage() {
   const payload = await getPayload({ config })
-  const products = await payload.find({ collection: 'products', where: { status: { equals: 'active' } }, limit: 100, depth: 1, sort: 'name' })
+  const products = await payload.find({
+    collection: 'products',
+    where: { status: { equals: 'active' } },
+    limit: 30,
+    depth: 0,
+    sort: 'name',
+    select: { slug: true, name: true, shortDescription: true, marketplaceImageUrl: true, pricing: true, geoRegions: true },
+  })
   return (
     <main className="section shell">
       <div className="section-head"><div><span className="eyebrow">Marketplace</span><h1 style={{fontSize:'3rem'}}>All products</h1></div></div>

@@ -27,7 +27,7 @@
     "deploy:app": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
     "deploy:database": "npm run migrations:sync && wrangler d1 migrations apply D1 --remote && wrangler d1 execute D1 --command \"PRAGMA optimize\" --remote",
     "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
-    "lint": "eslint .",
+    "lint": "cross-env NODE_OPTIONS=--max-old-space-size=6144 eslint .",
     "typecheck": "cross-env NODE_OPTIONS=--max-old-space-size=8192 tsc --noEmit"
   },
   "dependencies": {

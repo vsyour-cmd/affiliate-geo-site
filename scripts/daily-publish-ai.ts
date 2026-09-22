@@ -205,7 +205,14 @@ async function run() {
   const startedAt = new Date()
   const date = startedAt.toISOString().slice(0, 10)
   const payload = await getPayload({ config })
-  const products = await payload.find({ collection: 'products', where: { status: { equals: 'active' } }, limit: 100, depth: 2, sort: 'slug' })
+  const products = await payload.find({
+    collection: 'products',
+    where: { status: { equals: 'active' } },
+    limit: 100,
+    depth: 1,
+    sort: 'slug',
+    select: { name: true, slug: true, shortDescription: true, pricing: true, features: true, geoRegions: true, affiliateUrl: true, category: true },
+  })
   if (!products.docs.length) throw new Error('No active products are available for article generation')
   const dayIndex = Math.floor(startedAt.getTime() / 86_400_000) % products.docs.length
   const product = products.docs[dayIndex]

@@ -10,8 +10,9 @@ export default async function HomePage() {
     collection: 'products',
     where: { status: { equals: 'active' } },
     limit: 3,
-    depth: 1,
+    depth: 0,
     sort: '-updatedAt',
+    select: { slug: true, name: true, shortDescription: true, marketplaceImageUrl: true, pricing: true },
   })
 
   return (

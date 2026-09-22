@@ -5,6 +5,7 @@ const migrations = [
   { source: 'src/migrations/20260921_021904.ts', output: 'migrations/0001_initial.sql', name: '20260921_021904', batch: 1 },
   { source: 'src/migrations/20260921_025320.ts', output: 'migrations/0002_add_articles.sql', name: '20260921_025320', batch: 2 },
   { source: 'src/migrations/20260921_041748_digistore_catalog_fields.ts', output: 'migrations/0003_digistore_catalog_fields.sql', name: '20260921_041748_digistore_catalog_fields', batch: 3 },
+  { source: 'src/migrations/20260922_000001_locale_parent_indexes.ts', output: 'migrations/0004_locale_parent_indexes.sql', name: '20260922_000001_locale_parent_indexes', batch: 4 },
 ]
 
 async function run() {

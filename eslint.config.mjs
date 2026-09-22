@@ -11,5 +11,5 @@ export default defineConfig([
       '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
     },
   },
-  globalIgnores(['.next/**', '.open-next/**', 'cloudflare-env.d.ts', 'src/payload-types.ts', 'src/migrations/**']),
+  globalIgnores(['.next/**', '.open-next/**', '.open-next.previous/**', '.wrangler/**', 'cloudflare-env.d.ts', 'src/payload-types.ts', 'src/migrations/**']),
 ])

@@ -39,7 +39,33 @@ export async function POST(request: NextRequest) {
   const body = await request.json() as { offers?: MarketplaceOffer[]; fetchedAt?: string }
   if (!Array.isArray(body.offers) || !body.offers.length || body.offers.length > 25) return NextResponse.json({ error: 'Expected 1-25 offers' }, { status: 400 })
   const payload = await getPayload({ config })
-  const categoryIds = new Map<string, number>()
+  const categoryNames = new Map(body.offers.map((offer) => {
+    const name = String(offer.type || 'Other').trim() || 'Other'
+    return [slugify(name) || 'other', name]
+  }))
+  const sourceIds = body.offers.map((offer) => `digistore24:${offer.id}`)
+  const [existingProducts, existingCategories] = await Promise.all([
+    payload.find({
+      collection: 'products',
+      where: { sourceId: { in: sourceIds } },
+      limit: sourceIds.length,
+      pagination: false,
+      depth: 0,
+      select: { affiliateUrl: true, sourceData: true, sourceId: true },
+      overrideAccess: true,
+    }),
+    payload.find({
+      collection: 'categories',
+      where: { slug: { in: [...categoryNames.keys()] } },
+      limit: categoryNames.size,
+      pagination: false,
+      depth: 0,
+      select: { slug: true },
+      overrideAccess: true,
+    }),
+  ])
+  const productsBySourceId = new Map(existingProducts.docs.map((product) => [product.sourceId, product]))
+  const categoryIds = new Map(existingCategories.docs.map((category) => [category.slug, Number(category.id)]))
   let created = 0
   let updated = 0
   let unchanged = 0
@@ -53,15 +79,14 @@ export async function POST(request: NextRequest) {
     const categorySlug = slugify(categoryName) || 'other'
     let categoryId = categoryIds.get(categorySlug)
     if (!categoryId) {
-      const found = await payload.find({ collection: 'categories', where: { slug: { equals: categorySlug } }, limit: 1, select: { slug: true }, overrideAccess: true })
-      const category = found.docs[0] || await payload.create({ collection: 'categories', data: { name: categoryName, slug: categorySlug }, select: { slug: true }, overrideAccess: true })
+      const category = await payload.create({ collection: 'categories', data: { name: categoryName, slug: categorySlug }, select: { slug: true }, overrideAccess: true })
       categoryId = Number(category.id)
       categoryIds.set(categorySlug, categoryId)
     }
     const description = plainText(offer.description) || `Marketplace listing for ${offer.label}. Verify current product details on the vendor website.`
     const sourceId = `digistore24:${offer.id}`
-    const existing = await payload.find({ collection: 'products', where: { sourceId: { equals: sourceId } }, limit: 1, select: { affiliateUrl: true, sourceData: true }, overrideAccess: true })
-    if (existing.docs[0]?.affiliateUrl === offer.promoLink && JSON.stringify(existing.docs[0]?.sourceData) === JSON.stringify(offer)) {
+    const existing = productsBySourceId.get(sourceId)
+    if (existing?.affiliateUrl === offer.promoLink && JSON.stringify(existing.sourceData) === JSON.stringify(offer)) {
       unchanged += 1
       continue
     }
@@ -80,11 +105,11 @@ export async function POST(request: NextRequest) {
       reviewScore: 0, lastUpdated: body.fetchedAt || new Date().toISOString(), sourceStatus: 'active' as const,
       lastSeenAt: body.fetchedAt || new Date().toISOString(), sourceData: offer,
     }
-    if (existing.docs[0]) {
-      await payload.update({ collection: 'products', id: existing.docs[0].id, data, select: { sourceId: true }, overrideAccess: true })
+    if (existing) {
+      await payload.update({ collection: 'products', id: existing.id, data, depth: 0, select: { sourceId: true }, overrideAccess: true })
       updated += 1
     } else {
-      await payload.create({ collection: 'products', data, select: { sourceId: true }, overrideAccess: true })
+      await payload.create({ collection: 'products', data, depth: 0, select: { sourceId: true }, overrideAccess: true })
       created += 1
     }
     } catch (error) {

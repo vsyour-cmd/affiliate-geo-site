@@ -6,8 +6,20 @@ export const dynamic = 'force-dynamic'
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const payload = await getPayload({ config })
-  const products = await payload.find({ collection: 'products', where: { status: { equals: 'active' } }, limit: 1000, depth: 1 })
-  const articles = await payload.find({ collection: 'articles', where: { and: [{ status: { equals: 'published' } }, { indexable: { equals: true } }] }, limit: 1000, depth: 0 })
+  const products = await payload.find({
+    collection: 'products',
+    where: { status: { equals: 'active' } },
+    limit: 1000,
+    depth: 0,
+    select: { slug: true, updatedAt: true, geoRegions: true },
+  })
+  const articles = await payload.find({
+    collection: 'articles',
+    where: { and: [{ status: { equals: 'published' } }, { indexable: { equals: true } }] },
+    limit: 1000,
+    depth: 0,
+    select: { slug: true, updatedAt: true },
+  })
   const baseURL = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
   const urls: MetadataRoute.Sitemap = [
     { url: baseURL, lastModified: new Date(), changeFrequency: 'daily', priority: 1 },
