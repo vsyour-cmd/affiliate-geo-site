@@ -5,8 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "cross-env NODE_OPTIONS=--no-deprecation next dev",
-    "build": "cross-env NODE_OPTIONS=\"--no-deprecation --max-old-space-size=8000\" next build --webpack",
-    "build:cloudflare": "npm run prepare:local-d1 && cross-env PAYLOAD_BUILD_LOCAL=1 opennextjs-cloudflare build",
+    "build": "node scripts/build-cloudflare.mjs",
+    "build:next": "cross-env NODE_OPTIONS=\"--no-deprecation --max-old-space-size=8000\" next build --webpack",
+    "build:cloudflare": "npm run build",
     "start": "cross-env NODE_OPTIONS=--no-deprecation next start",
     "payload": "cross-env NODE_OPTIONS=--no-deprecation payload",
     "generate:types": "npm run generate:types:cloudflare && npm run generate:types:payload",
