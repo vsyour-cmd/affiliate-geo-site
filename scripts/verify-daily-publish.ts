@@ -3,12 +3,22 @@ import path from 'path'
 import { getPayload } from 'payload'
 import config from '../src/payload.config'
 
+function shanghaiDate(value = new Date()) {
+  const parts = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Shanghai', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(value)
+  const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((item) => item.type === type)?.value || ''
+  return `${part('year')}-${part('month')}-${part('day')}`
+}
+
+function shanghaiDayRange(date: string) {
+  const startDate = new Date(`${date}T00:00:00+08:00`)
+  return { start: startDate.toISOString(), end: new Date(startDate.getTime() + 86_400_000 - 1).toISOString() }
+}
+
 async function run() {
   if (process.env.PUBLISH_API_URL) {
     const baseURL = process.env.PUBLISH_API_URL.replace(/\/$/, '')
-    const date = new Date().toISOString().slice(0, 10)
-    const start = `${date}T00:00:00.000Z`
-    const end = `${date}T23:59:59.999Z`
+    const date = shanghaiDate()
+    const { start, end } = shanghaiDayRange(date)
     const automationSecret = process.env.AUTOMATION_SECRET
     if (!automationSecret) throw new Error('AUTOMATION_SECRET is required for remote verification')
     const response = await fetch(new URL('/automation/context', baseURL), {
@@ -29,9 +39,8 @@ async function run() {
     process.exit(0)
   }
   const payload = await getPayload({ config })
-  const date = new Date().toISOString().slice(0, 10)
-  const start = `${date}T00:00:00.000Z`
-  const end = `${date}T23:59:59.999Z`
+  const date = shanghaiDate()
+  const { start, end } = shanghaiDayRange(date)
   const result = await payload.find({ collection: 'articles', where: { and: [{ aiGenerated: { equals: true } }, { status: { equals: 'published' } }, { publishedAt: { greater_than_equal: start } }, { publishedAt: { less_than_equal: end } }] }, limit: 10, sort: '-publishedAt' })
   const verification = { date, publishedCount: result.docs.length, articles: result.docs.map((article) => ({ id: article.id, slug: article.slug, title: article.title, publishedAt: article.publishedAt, qualityScore: article.qualityScore, model: article.aiModel })) }
   await fs.mkdir(path.resolve('artifacts'), { recursive: true })

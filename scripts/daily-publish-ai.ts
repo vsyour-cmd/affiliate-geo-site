@@ -29,6 +29,17 @@ const reportPath = path.resolve('artifacts/daily-publish-report.json')
 const model = process.env.DEEPSEEK_MODEL || 'deepseek-flash'
 const language = process.env.AI_ARTICLE_LANGUAGE || 'en'
 
+function shanghaiDate(value = new Date()) {
+  const parts = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Shanghai', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(value)
+  const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((item) => item.type === type)?.value || ''
+  return `${part('year')}-${part('month')}-${part('day')}`
+}
+
+function shanghaiDayRange(date: string) {
+  const start = new Date(`${date}T00:00:00+08:00`)
+  return { start: start.toISOString(), end: new Date(start.getTime() + 86_400_000 - 1).toISOString() }
+}
+
 function slugify(value: string) {
   return value.toLowerCase().normalize('NFKD').replace(/[^a-z0-9\s-]/g, '').trim().replace(/\s+/g, '-').replace(/-+/g, '-').slice(0, 90)
 }
@@ -215,7 +226,8 @@ async function runRemote() {
   }
   const startedAt = new Date()
   const dryRun = process.env.AI_DRY_RUN === 'true'
-  const date = startedAt.toISOString().slice(0, 10)
+  const date = shanghaiDate(startedAt)
+  const dayRange = shanghaiDayRange(date)
   const contextResponse = await fetchAutomation(new URL('/automation/context', baseURL), {
     headers: automationHeaders,
   }, 'context')
@@ -225,7 +237,7 @@ async function runRemote() {
     articles: Array<{ id: string | number; slug: string; automationKey?: string; title: string; aiGenerated?: boolean; publishedAt?: string }>
   }
   if (!context.products.length) throw new Error('No active products are available for article generation')
-  const publishedToday = context.articles.find((article) => article.aiGenerated === true && article.publishedAt?.startsWith(date))
+  const publishedToday = context.articles.find((article) => article.aiGenerated === true && article.publishedAt && article.publishedAt >= dayRange.start && article.publishedAt <= dayRange.end)
   if (publishedToday && !dryRun) {
     await writeReport({ status: 'skipped', reason: 'daily-cap-reached', date, articleId: publishedToday.id, slug: publishedToday.slug })
     console.log(JSON.stringify({ event: 'daily-publish-skipped', reason: 'daily-cap-reached', articleId: publishedToday.id }))
@@ -288,7 +300,7 @@ async function run() {
     process.exit(0)
   }
   const startedAt = new Date()
-  const date = startedAt.toISOString().slice(0, 10)
+  const date = shanghaiDate(startedAt)
   const payload = await getPayload({ config })
   const products = await payload.find({
     collection: 'products',
@@ -354,7 +366,7 @@ async function run() {
 
 run().catch(async (error) => {
   const message = error instanceof Error ? error.message : String(error)
-  await writeReport({ status: 'failed', date: new Date().toISOString().slice(0, 10), reason: message }).catch(() => undefined)
+  await writeReport({ status: 'failed', date: shanghaiDate(), reason: message }).catch(() => undefined)
   console.error(JSON.stringify({ event: 'daily-publish-failed', error: message }))
   process.exit(1)
 })
