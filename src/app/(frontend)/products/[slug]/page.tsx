@@ -3,6 +3,7 @@ import { notFound, redirect } from 'next/navigation'
 import { getPayload } from 'payload'
 import config from '@payload-config'
 import { ProductDescription } from '@/components/ProductDescription'
+import { ProductActions } from '@/components/ProductActions'
 import { getLanguage, getMessages } from '@/lib/i18n'
 
 const countryToRegion: Record<string, string> = { AU:'au', CN:'cn', DE:'de', FR:'fr', GB:'uk', JP:'jp', US:'us' }
@@ -26,6 +27,7 @@ export default async function ProductRedirectPage({ params }: { params: Promise<
           <span className="badge">{t.globalListing}</span>
           <h1 style={{fontSize:'clamp(2.5rem,6vw,4.5rem)'}}>{product.name}</h1>
           <p className="lede">{product.shortDescription}</p>
+          <ProductActions slug={product.slug} title={product.name} labels={{ save: t.save, saved: t.saved, share: t.share, copied: t.copied }} />
           {product.marketplaceImageUrl ? <figure className="product-hero"><img src={product.marketplaceImageUrl} alt={`${product.name} product illustration`} /></figure> : null}
           <section className="product-overview"><h2>{t.overview}</h2>{product.description ? <ProductDescription data={product.description} /> : null}</section>
         </article>
