@@ -17,14 +17,21 @@ const batchSize = Math.min(10, Math.max(1, Number.parseInt(process.env.PRODUCT_E
 const reportPath = path.resolve('artifacts/product-enrichment-report.json')
 const headers = { accept: 'application/json', 'user-agent': 'Mozilla/5.0 (compatible; AffiliateGeoPublisher/1.0)', 'x-automation-secret': secret }
 
-function valid(value: unknown): value is ProductEnrichment {
-  if (!value || typeof value !== 'object') return false
+function normalize(value: unknown): ProductEnrichment {
+  if (!value || typeof value !== 'object') throw new Error('product enrichment is not an object')
   const item = value as Partial<ProductEnrichment>
-  return typeof item.summary === 'string' && item.summary.length >= 80 && item.summary.length <= 160
-    && Array.isArray(item.overview) && item.overview.length >= 2 && item.overview.length <= 4 && item.overview.every((text) => typeof text === 'string' && text.length >= 80 && text.length <= 700)
-    && Array.isArray(item.features) && item.features.length >= 4 && item.features.length <= 8 && item.features.every((feature) => feature && typeof feature.title === 'string' && feature.title.length <= 90 && typeof feature.description === 'string' && feature.description.length >= 40 && feature.description.length <= 400)
-    && Array.isArray(item.idealFor) && item.idealFor.length >= 2 && item.idealFor.length <= 6
-    && Array.isArray(item.limitations) && item.limitations.length >= 2 && item.limitations.length <= 6
+  const clean = (text: string) => text.replace(/\s*\[S\d+\]/gi, '').replace(/\s+/g, ' ').trim()
+  const summary = typeof item.summary === 'string' ? clean(item.summary).slice(0, 160) : ''
+  const overview = Array.isArray(item.overview) ? item.overview.filter((text): text is string => typeof text === 'string').map(clean).filter((text) => text.length >= 40).slice(0, 4) : []
+  const features = Array.isArray(item.features) ? item.features.flatMap((feature) => feature && typeof feature.title === 'string' && typeof feature.description === 'string' ? [{ title: clean(feature.title).slice(0, 90), description: clean(feature.description).slice(0, 400) }] : []).filter((feature) => feature.title.length >= 3 && feature.description.length >= 20).slice(0, 8) : []
+  const idealFor = Array.isArray(item.idealFor) ? item.idealFor.filter((text): text is string => typeof text === 'string').map(clean).filter((text) => text.length >= 10).slice(0, 6) : []
+  const limitations = Array.isArray(item.limitations) ? item.limitations.filter((text): text is string => typeof text === 'string').map(clean).filter((text) => text.length >= 10).slice(0, 6) : []
+  if (summary.length < 50) throw new Error(`summary too short (${summary.length})`)
+  if (overview.length < 2) throw new Error(`not enough overview paragraphs (${overview.length})`)
+  if (features.length < 4) throw new Error(`not enough usable features (${features.length})`)
+  if (idealFor.length < 2) throw new Error(`not enough audience items (${idealFor.length})`)
+  if (limitations.length < 2) throw new Error(`not enough limitation items (${limitations.length})`)
+  return { summary, overview, features, idealFor, limitations }
 }
 
 async function generate(product: Record<string, unknown>, evidence: Awaited<ReturnType<typeof researchProduct>>) {
@@ -47,8 +54,7 @@ async function generate(product: Record<string, unknown>, evidence: Awaited<Retu
   const data = await response.json() as { choices?: Array<{ message?: { content?: string } }>; usage?: unknown }
   const raw = data.choices?.[0]?.message?.content
   if (!raw) throw new Error('DeepSeek returned empty product enrichment')
-  const enrichment = JSON.parse(raw) as unknown
-  if (!valid(enrichment)) throw new Error('DeepSeek returned invalid product enrichment structure')
+  const enrichment = normalize(JSON.parse(raw) as unknown)
   return { enrichment, usage: data.usage }
 }
 

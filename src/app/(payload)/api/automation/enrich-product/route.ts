@@ -13,11 +13,11 @@ type ProductEnrichment = {
 
 function valid(value: ProductEnrichment | undefined): value is ProductEnrichment {
   return Boolean(value
-    && typeof value.summary === 'string' && value.summary.length >= 80 && value.summary.length <= 160
+    && typeof value.summary === 'string' && value.summary.length >= 50 && value.summary.length <= 160
     && Array.isArray(value.overview) && value.overview.length >= 2 && value.overview.length <= 4
-    && value.overview.every((item) => typeof item === 'string' && item.length >= 80 && item.length <= 700)
+    && value.overview.every((item) => typeof item === 'string' && item.length >= 40 && item.length <= 700)
     && Array.isArray(value.features) && value.features.length >= 4 && value.features.length <= 8
-    && value.features.every((item) => item && typeof item.title === 'string' && item.title.length <= 90 && typeof item.description === 'string' && item.description.length >= 40 && item.description.length <= 400)
+    && value.features.every((item) => item && typeof item.title === 'string' && item.title.length >= 3 && item.title.length <= 90 && typeof item.description === 'string' && item.description.length >= 20 && item.description.length <= 400)
     && Array.isArray(value.idealFor) && value.idealFor.length >= 2 && value.idealFor.length <= 6
     && Array.isArray(value.limitations) && value.limitations.length >= 2 && value.limitations.length <= 6)
 }
