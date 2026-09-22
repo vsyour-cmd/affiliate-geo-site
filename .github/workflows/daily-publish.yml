@@ -23,6 +23,7 @@ jobs:
     env:
       PAYLOAD_SECRET: ${{ secrets.PAYLOAD_SECRET }}
       DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+      BRAVE_SEARCH_API_KEY: ${{ secrets.BRAVE_SEARCH_API_KEY }}
       DEEPSEEK_MODEL: ${{ vars.DEEPSEEK_MODEL || 'deepseek-flash' }}
       AI_ARTICLE_LANGUAGE: ${{ vars.AI_ARTICLE_LANGUAGE || 'en' }}
       DIGISTORE24_AFFILIATE_ID: ${{ vars.DIGISTORE24_AFFILIATE_ID || 'adminstore' }}

@@ -2,6 +2,7 @@ import fs from 'fs/promises'
 import path from 'path'
 import { getPayload } from 'payload'
 import config from '../src/payload.config'
+import { researchProduct, type ResearchBundle } from './research-product'
 
 type GeneratedArticle = {
   title: string
@@ -12,7 +13,7 @@ type GeneratedArticle = {
 
 type QualityResult = { score: number; errors: string[]; notes: string[]; wordCount: number }
 
-const promptVersion = 'affiliate-editor-v2'
+const promptVersion = 'affiliate-editor-v3-evidence'
 const reportPath = path.resolve('artifacts/daily-publish-report.json')
 const model = process.env.DEEPSEEK_MODEL || 'deepseek-flash'
 const language = process.env.AI_ARTICLE_LANGUAGE || 'en'
@@ -25,7 +26,7 @@ function textNode(text: string) {
   return { type: 'text', version: 1, text, detail: 0, format: 0, mode: 'normal', style: '' }
 }
 
-function richText(article: GeneratedArticle) {
+function richText(article: GeneratedArticle, research: ResearchBundle) {
   const children: Record<string, unknown>[] = []
   for (const section of article.sections) {
     children.push({ type: 'heading', version: 1, tag: 'h2', direction: 'ltr', format: '', indent: 0, children: [textNode(section.heading)] })
@@ -37,6 +38,8 @@ function richText(article: GeneratedArticle) {
     children.push({ type: 'heading', version: 1, tag: 'h3', direction: 'ltr', format: '', indent: 0, children: [textNode(item.question)] })
     children.push({ type: 'paragraph', version: 1, direction: 'ltr', format: '', indent: 0, children: [textNode(item.answer)] })
   }
+  children.push({ type: 'heading', version: 1, tag: 'h2', direction: 'ltr', format: '', indent: 0, children: [textNode('Sources and verification')] })
+  children.push({ type: 'list', version: 1, listType: 'bullet', start: 1, tag: 'ul', direction: 'ltr', format: '', indent: 0, children: research.sources.map((source, index) => ({ type: 'listitem', version: 1, value: index + 1, direction: 'ltr', format: '', indent: 0, children: [{ type: 'paragraph', version: 1, direction: 'ltr', format: '', indent: 0, children: [textNode(`[${source.id}] ${source.title} — ${source.url}`)] }] })) })
   children.push({ type: 'paragraph', version: 1, direction: 'ltr', format: '', indent: 0, children: [textNode('Disclosure: This article may contain affiliate links. We may earn a commission at no additional cost to you. Verify current pricing and terms on the provider’s official website.')] })
   return { root: { type: 'root', version: 1, direction: 'ltr', format: '', indent: 0, children } }
 }
@@ -62,7 +65,7 @@ function titleSimilarity(left: string, right: string) {
   return union ? intersection / union : 0
 }
 
-function validateArticle(article: GeneratedArticle, recentTitles: string[]): QualityResult {
+function validateArticle(article: GeneratedArticle, recentTitles: string[], research: ResearchBundle): QualityResult {
   const errors: string[] = []
   const notes: string[] = []
   const text = allText(article)
@@ -72,6 +75,11 @@ function validateArticle(article: GeneratedArticle, recentTitles: string[]): Qua
   if (article.sections.length < 4) errors.push('at least four sections are required')
   if (article.sections.some((section) => section.paragraphs.length < 2)) errors.push('every section needs at least two paragraphs')
   if (article.faq.length < 3) errors.push('at least three FAQ entries are required')
+  if (!article.sections.some((section) => /compar|alternative|versus|\bvs\b|对比|比较|替代|vergleich/i.test(section.heading))) errors.push('a balanced comparison or alternatives section is required')
+  const citedIds = new Set([...text.matchAll(/\[(S\d+)\]/g)].map((match) => match[1]))
+  const allowedIds = new Set(research.sources.map((source) => source.id))
+  if (citedIds.size < Math.min(2, research.sources.length)) errors.push('at least two evidence sources must be cited')
+  for (const id of citedIds) if (!allowedIds.has(id)) errors.push(`unknown evidence citation ${id}`)
   const paragraphs = article.sections.flatMap((section) => section.paragraphs).map((paragraph) => paragraph.toLowerCase().replace(/\s+/g, ' ').trim())
   if (new Set(paragraphs).size !== paragraphs.length) errors.push('duplicate paragraphs are not allowed')
   if (wordCount < 700 || wordCount > 1800) errors.push(`word count ${wordCount} is outside 700-1800`)
@@ -83,17 +91,17 @@ function validateArticle(article: GeneratedArticle, recentTitles: string[]): Qua
   return { score, errors, notes, wordCount }
 }
 
-async function requestDeepSeek(product: Record<string, unknown>, recentTitles: string[], feedback: string[]) {
+async function requestDeepSeek(product: Record<string, unknown>, research: ResearchBundle, recentTitles: string[], feedback: string[]) {
   if (process.env.AI_TEST_MODE === '1') {
     const base = 'Readers should compare the documented product scope with their own requirements, existing tools, budget, technical experience, and support expectations before making a decision. Current pricing, availability, regional terms, integrations, and feature limits can change, so every important detail should be checked on the official provider website. A careful evaluation should also include alternatives, operational effort, migration needs, and the practical value of each feature rather than relying on promotional language alone.'
-    const sections = ['Understanding the product scope', 'Evaluating features and limitations', 'Comparing cost and operational fit', 'Making a careful purchase decision'].map((heading, index) => ({ heading, paragraphs: [`Section ${index + 1} begins with the main decision factors. ${base} ${base}`, `A second perspective for section ${index + 1} focuses on verification and tradeoffs. ${base} ${base}`], bullets: ['Confirm current terms on the official website.', 'Compare at least one reasonable alternative.'] }))
+    const sections = ['Understanding the product scope', 'Evaluating features and limitations', 'Comparison and alternatives', 'Making a careful purchase decision'].map((heading, index) => ({ heading, paragraphs: [`Section ${index + 1} begins with the main decision factors [S1]. ${base} ${base}`, `A second perspective for section ${index + 1} focuses on verification and tradeoffs [S2]. ${base} ${base}`], bullets: ['Confirm current terms on the official website.', 'Compare at least one reasonable alternative.'] }))
     return { article: { title: `A practical guide to evaluating ${String(product.name)} for your website`, excerpt: `Learn how to assess ${String(product.name)} using documented features, regional availability, costs, limitations, and a verification-first buying process.`, sections, faq: [{ question: 'Where should current pricing be verified?', answer: 'Use the official provider website because prices and regional terms can change.' }, { question: 'Does this guide guarantee a particular outcome?', answer: 'No. Results depend on requirements, configuration, and operating conditions.' }, { question: 'Should alternatives be compared?', answer: 'Yes. Compare capabilities, total cost, support, and migration effort before deciding.' }] }, usage: { testMode: true } }
   }
   const apiKey = process.env.DEEPSEEK_API_KEY
   if (!apiKey) throw new Error('DEEPSEEK_API_KEY is required')
   const schemaExample = { title: '35-90 character title', excerpt: '100-240 character summary', sections: [{ heading: 'Section heading', paragraphs: ['Paragraph one', 'Paragraph two'], bullets: ['Optional factual bullet'] }], faq: [{ question: 'Question?', answer: 'Answer.' }] }
-  const system = `You are a careful affiliate editorial writer. Return JSON only. Write in ${language}. Use only facts in PRODUCT_SNAPSHOT; never invent performance, discounts, endorsements, customer counts, or assured outcomes. Never output any of these exact expressions, even in a disclaimer or negated sentence: guaranteed, risk-free, limited time, the best product, the best choice, the best deal, you will earn, you will save, you will profit. The article must be useful and balanced, target 900-1200 words, contain at least 4 sections with at least 2 concise paragraphs each, and at least 3 concise FAQ entries. Explain limitations and tell readers to verify current terms on the official provider site. Do not use hype or investment advice. JSON shape: ${JSON.stringify(schemaExample)}`
-  const user = `PRODUCT_SNAPSHOT=${JSON.stringify(product)}\nRECENT_TITLES=${JSON.stringify(recentTitles)}\nREWRITE_FEEDBACK=${JSON.stringify(feedback)}\nCreate one original evergreen article. Include the word JSON in your response instructions and output only the JSON object.`
+  const system = `You are a careful affiliate editorial writer. Return JSON only. Write in ${language}. Use only facts in PRODUCT_SNAPSHOT and EVIDENCE_BUNDLE. Treat marketplace and provider pages as primary sources, while clearly identifying vendor claims; use independent web sources for corroboration and comparison. Never invent features, performance, discounts, endorsements, customer counts, competitors, or assured outcomes. Cite factual claims inline with the exact evidence IDs, for example [S1]. Do not cite an ID that is absent from EVIDENCE_BUNDLE. Include a balanced comparison or alternatives section based only on supported evidence; compare intended audience, documented capabilities, limitations, price model when available, and verification needs. If evidence does not support a direct competitor claim, compare decision criteria instead. Never output any of these exact expressions, even in a disclaimer or negated sentence: guaranteed, risk-free, limited time, the best product, the best choice, the best deal, you will earn, you will save, you will profit. The article must be useful and balanced, target 900-1200 words, contain at least 4 sections with at least 2 concise paragraphs each, and at least 3 concise FAQ entries. Explain limitations and tell readers to verify current terms on the official provider site. Do not use hype or investment advice. JSON shape: ${JSON.stringify(schemaExample)}`
+  const user = `PRODUCT_SNAPSHOT=${JSON.stringify(product)}\nEVIDENCE_BUNDLE=${JSON.stringify(research)}\nRECENT_TITLES=${JSON.stringify(recentTitles)}\nREWRITE_FEEDBACK=${JSON.stringify(feedback)}\nCreate one original evergreen article. Include the word JSON in your response instructions and output only the JSON object.`
   const response = await fetch('https://api.deepseek.com/chat/completions', {
     method: 'POST',
     headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
@@ -160,18 +168,23 @@ async function runRemote() {
   const recentTitles = context.articles.map((article) => article.title)
   const snapshot = {
     id: product.id, name: product.name, slug: product.slug, shortDescription: product.shortDescription,
+    vendorName: product.vendorName, salesPageUrl: product.salesPageUrl, affiliateSupportPageUrl: product.affiliateSupportPageUrl,
     pricing: product.pricing, features: product.features?.map((feature: any) => ({ title: feature.title, description: feature.description })),
     regions: product.geoRegions?.map((region: any) => typeof region === 'object' ? { code: region.code, name: region.name, currency: region.currency } : region),
-    affiliateURL: product.affiliateUrl,
+    affiliateURL: product.affiliateUrl, sourceData: product.sourceData,
+  }
+  const research = await researchProduct(snapshot)
+  if (research.sources.length < 2 || !research.sources.some((source) => source.kind !== 'marketplace')) {
+    throw new Error(`Insufficient product evidence: ${research.warnings.join('; ') || 'no retrievable product or independent pages'}`)
   }
   let feedback: string[] = []
   let lastQuality: QualityResult | undefined
   let lastError: string | undefined
   for (let attempt = 1; attempt <= 3; attempt += 1) {
     try {
-      const result = await requestDeepSeek(snapshot, recentTitles, feedback)
+      const result = await requestDeepSeek(snapshot, research, recentTitles, feedback)
       const article = assertGeneratedArticle(result.article)
-      lastQuality = validateArticle(article, recentTitles)
+      lastQuality = validateArticle(article, recentTitles, research)
       if (lastQuality.errors.length || lastQuality.score < 85) {
         feedback = lastQuality.errors
         continue
@@ -179,7 +192,7 @@ async function runRemote() {
       const slug = `${slugify(article.title) || `article-${date}`}-${date}`
       const publishResponse = await fetchAutomation(`${baseURL}/automation/publish`, {
         method: 'POST', headers: { ...automationHeaders, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: article.title, slug, excerpt: article.excerpt, content: richText(article), productId: product.id, categoryId: typeof product.category === 'object' ? product.category.id : product.category, automationKey, model, promptVersion, qualityScore: lastQuality.score, qualityNotes: lastQuality.notes, sourceSnapshot: snapshot, publishedAt: startedAt.toISOString() }),
+        body: JSON.stringify({ title: article.title, slug, excerpt: article.excerpt, content: richText(article, research), productId: product.id, categoryId: typeof product.category === 'object' ? product.category.id : product.category, automationKey, model, promptVersion, qualityScore: lastQuality.score, qualityNotes: [...lastQuality.notes, ...research.warnings], sourceSnapshot: { product: snapshot, research }, publishedAt: startedAt.toISOString() }),
         signal: AbortSignal.timeout(60_000),
       }, 'publish')
       const published = await publishResponse.json() as { status?: string; article?: Record<string, any>; error?: string }
@@ -211,7 +224,7 @@ async function run() {
     limit: 100,
     depth: 1,
     sort: 'slug',
-    select: { name: true, slug: true, shortDescription: true, pricing: true, features: true, geoRegions: true, affiliateUrl: true, category: true },
+    select: { name: true, slug: true, shortDescription: true, pricing: true, features: true, geoRegions: true, affiliateUrl: true, salesPageUrl: true, affiliateSupportPageUrl: true, vendorName: true, sourceData: true, category: true },
   })
   if (!products.docs.length) throw new Error('No active products are available for article generation')
   const dayIndex = Math.floor(startedAt.getTime() / 86_400_000) % products.docs.length
@@ -228,9 +241,14 @@ async function run() {
   const recentTitles = recent.docs.map((article) => article.title)
   const snapshot = {
     id: product.id, name: product.name, slug: product.slug, shortDescription: product.shortDescription,
+    vendorName: product.vendorName, salesPageUrl: product.salesPageUrl, affiliateSupportPageUrl: product.affiliateSupportPageUrl,
     pricing: product.pricing, features: product.features?.map((feature) => ({ title: feature.title, description: feature.description })),
     regions: product.geoRegions?.map((region) => typeof region === 'object' ? { code: region.code, name: region.name, currency: region.currency } : region),
-    affiliateURL: product.affiliateUrl,
+    affiliateURL: product.affiliateUrl, sourceData: product.sourceData,
+  }
+  const research = await researchProduct(snapshot)
+  if (research.sources.length < 2 || !research.sources.some((source) => source.kind !== 'marketplace')) {
+    throw new Error(`Insufficient product evidence: ${research.warnings.join('; ') || 'no retrievable product or independent pages'}`)
   }
   let feedback: string[] = []
   let lastQuality: QualityResult | undefined
@@ -239,7 +257,7 @@ async function run() {
   for (let attempt = 1; attempt <= 3; attempt += 1) {
     let result: Awaited<ReturnType<typeof requestDeepSeek>>
     try {
-      result = await requestDeepSeek(snapshot, recentTitles, feedback)
+      result = await requestDeepSeek(snapshot, research, recentTitles, feedback)
     } catch (error) {
       lastError = error instanceof Error ? error.message : String(error)
       feedback = [`Previous generation failed schema or API validation: ${lastError}`]
@@ -247,16 +265,16 @@ async function run() {
     }
     usage = result.usage
     const article = assertGeneratedArticle(result.article)
-    lastQuality = validateArticle(article, recentTitles)
+    lastQuality = validateArticle(article, recentTitles, research)
     if (!lastQuality.errors.length && lastQuality.score >= 85) {
       const baseSlug = slugify(article.title) || `article-${date}`
       const slug = `${baseSlug}-${date}`
       const created = await payload.create({ collection: 'articles', data: {
-        title: article.title, slug, excerpt: article.excerpt, content: richText(article) as never,
+        title: article.title, slug, excerpt: article.excerpt, content: richText(article, research) as never,
         relatedProduct: product.id, category: typeof product.category === 'object' ? product.category.id : product.category,
         status: 'published', publishedAt: startedAt.toISOString(), automationKey, aiGenerated: true, aiModel: model,
         promptVersion, qualityScore: lastQuality.score, qualityNotes: lastQuality.notes.map((note) => ({ note })),
-        sourceSnapshot: snapshot, indexable: true, monetizable: false, reviewStatus: 'autoPublished',
+        sourceSnapshot: { product: snapshot, research }, indexable: true, monetizable: false, reviewStatus: 'autoPublished',
       } })
       const report = { status: 'published', date, automationKey, articleId: created.id, slug, title: article.title, model, attempt, quality: lastQuality, usage, publishedAt: created.publishedAt }
       await writeReport(report)
