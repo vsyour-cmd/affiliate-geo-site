@@ -39,14 +39,14 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci
-      - name: Sync complete Digistore24 Marketplace catalog
-        id: catalog_sync
-        continue-on-error: true
-        run: npm run daily:catalog-sync
       - name: Generate and publish one gated article
         run: npm run daily:publish
       - name: Verify publication in production D1
         run: npm run daily:verify
+      - name: Sync complete Digistore24 Marketplace catalog
+        id: catalog_sync
+        continue-on-error: true
+        run: npm run daily:catalog-sync
       - name: Upload publication evidence
         if: always()
         uses: actions/upload-artifact@v4
