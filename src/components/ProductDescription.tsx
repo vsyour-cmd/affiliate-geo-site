@@ -29,25 +29,51 @@ function headingAndBody(prefix: string) {
 }
 
 function countryLinks(text: string) {
-  const matches = [...text.matchAll(/([^\s][^]*?)\s+(https:\/\/[^\s]+)/g)]
-  if (matches.length < 2) return null
-  return matches.map((match) => ({ label: match[1].trim().replace(/^[-–—]\s*/, ''), url: match[2].replace(/[),.;]+$/, '') }))
+  const headingMatch = text.match(/^(Länderlinks|Country links|Regional links|Liens pays|Enlaces por país)\s+/i)
+  if (!headingMatch) return null
+
+  const content = text.slice(headingMatch[0].length)
+  const urls = [...content.matchAll(/https:\/\/[^\s]+/g)]
+  if (urls.length < 2) return null
+
+  let previousEnd = 0
+  const links = urls.map((match) => {
+    const start = match.index ?? 0
+    const label = content.slice(previousEnd, start).trim().replace(/^[-–—]\s*/, '')
+    const rawURL = match[0]
+    const url = rawURL.replace(/[),.;]+$/, '')
+    previousEnd = start + rawURL.length
+    return { label, url }
+  }).filter((link) => link.label)
+
+  return links.length >= 2 ? { heading: headingMatch[1], links } : null
 }
 
 function ProductSection({ text, index }: { text: string; index: number }) {
+  const linkSection = countryLinks(text)
+  if (linkSection) {
+    return (
+      <section className="product-copy-section">
+        <div className="product-copy-index" aria-hidden="true">{String(index).padStart(2, '0')}</div>
+        <div className="product-copy-content">
+          <h3>{linkSection.heading}</h3>
+          <ul className="product-link-list">{linkSection.links.map((link) => <li key={link.url}><span>{link.label}</span><a href={link.url} target="_blank" rel="noopener noreferrer nofollow">Open link ↗</a></li>)}</ul>
+        </div>
+      </section>
+    )
+  }
+
   const hyphenParts = text.split(/\s+-\s+(?=[\p{L}\p{N}])/u).map((item) => item.trim()).filter(Boolean)
   const numberedParts = text.split(/\s+(?=\d+\.\s)/).map((item) => item.trim()).filter(Boolean)
   const parts = hyphenParts.length > 1 ? hyphenParts : numberedParts.length > 1 ? numberedParts : [text]
   const { heading, body } = headingAndBody(parts[0])
-  const links = parts.length === 1 ? countryLinks(body || text) : null
 
   return (
     <section className="product-copy-section">
       <div className="product-copy-index" aria-hidden="true">{String(index).padStart(2, '0')}</div>
       <div className="product-copy-content">
         <h3>{heading}</h3>
-        {body && !links ? <p>{linkedText(body)}</p> : null}
-        {links ? <ul className="product-link-list">{links.map((link) => <li key={link.url}><span>{link.label}</span><a href={link.url} target="_blank" rel="noopener noreferrer nofollow">Open link ↗</a></li>)}</ul> : null}
+        {body ? <p>{linkedText(body)}</p> : null}
         {parts.length > 1 ? <ul className="product-fact-list">{parts.slice(1).map((item, itemIndex) => <li key={`${item.slice(0, 40)}-${itemIndex}`}>{linkedText(item.replace(/^\d+\.\s*/, ''))}</li>)}</ul> : null}
       </div>
     </section>
