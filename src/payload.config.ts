@@ -42,8 +42,9 @@ const isCLI = process.argv.some((value) => {
   )
 })
 const isProduction = process.env.NODE_ENV === 'production'
+const useLocalBuildBindings = process.env.PAYLOAD_BUILD_LOCAL === '1'
 const cloudflare =
-  isCLI || !isProduction
+  isCLI || !isProduction || useLocalBuildBindings
     ? await getCloudflareContextFromWrangler()
     : await getCloudflareContext({ async: true })
 
@@ -79,7 +80,7 @@ function getCloudflareContextFromWrangler(): Promise<CloudflareContext> {
     ({ getPlatformProxy }) =>
       getPlatformProxy({
         environment: process.env.CLOUDFLARE_ENV,
-        remoteBindings: isProduction,
+        remoteBindings: isProduction && !useLocalBuildBindings,
       } satisfies GetPlatformProxyOptions),
   )
 }
