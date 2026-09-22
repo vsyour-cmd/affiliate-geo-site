@@ -131,6 +131,34 @@ async function fetchAutomation(url: string | URL, init: RequestInit, label: stri
   throw new Error(`${label} request exhausted retries`)
 }
 
+function productSnapshot(product: Record<string, any>) {
+  return {
+    id: product.id, name: product.name, slug: product.slug, shortDescription: product.shortDescription,
+    vendorName: product.vendorName, salesPageUrl: product.salesPageUrl, affiliateSupportPageUrl: product.affiliateSupportPageUrl,
+    pricing: product.pricing, features: product.features?.map((feature: any) => ({ title: feature.title, description: feature.description })),
+    regions: product.geoRegions?.map((region: any) => typeof region === 'object' ? { code: region.code, name: region.name, currency: region.currency } : region),
+    affiliateURL: product.affiliateUrl, sourceData: product.sourceData,
+  }
+}
+
+async function findResearchableProduct(products: Array<Record<string, any>>, startIndex: number) {
+  const failures: string[] = []
+  const attempts = Math.min(products.length, 6)
+  for (let offset = 0; offset < attempts; offset += 1) {
+    const product = products[(startIndex + offset) % products.length]
+    const snapshot = productSnapshot(product)
+    const research = await researchProduct(snapshot)
+    if (research.sources.length >= 2 && research.sources.some((source) => source.kind !== 'marketplace')) {
+      console.log(JSON.stringify({ event: 'product-research-selected', productId: product.id, offset, sources: research.sources.length, warnings: research.warnings.length }))
+      return { product, snapshot, research }
+    }
+    const reason = research.warnings.join('; ') || 'no retrievable product or independent pages'
+    failures.push(`${String(product.id)}: ${reason}`)
+    console.warn(JSON.stringify({ event: 'product-research-skipped', productId: product.id, offset, reason }))
+  }
+  throw new Error(`Insufficient product evidence after ${attempts} candidates: ${failures.join(' | ')}`)
+}
+
 async function runRemote() {
   const baseURL = process.env.PUBLISH_API_URL?.replace(/\/$/, '')
   const automationSecret = process.env.AUTOMATION_SECRET
@@ -157,7 +185,8 @@ async function runRemote() {
     console.log(JSON.stringify({ event: 'daily-publish-skipped', reason: 'daily-cap-reached', articleId: publishedToday.id }))
     return
   }
-  const product = context.products[Math.floor(startedAt.getTime() / 86_400_000) % context.products.length]
+  const dayIndex = Math.floor(startedAt.getTime() / 86_400_000) % context.products.length
+  const { product, snapshot, research } = await findResearchableProduct(context.products, dayIndex)
   const automationKey = `${date}:${product.id}`
   const existing = context.articles.find((article) => article.automationKey === automationKey)
   if (existing) {
@@ -166,17 +195,6 @@ async function runRemote() {
     return
   }
   const recentTitles = context.articles.map((article) => article.title)
-  const snapshot = {
-    id: product.id, name: product.name, slug: product.slug, shortDescription: product.shortDescription,
-    vendorName: product.vendorName, salesPageUrl: product.salesPageUrl, affiliateSupportPageUrl: product.affiliateSupportPageUrl,
-    pricing: product.pricing, features: product.features?.map((feature: any) => ({ title: feature.title, description: feature.description })),
-    regions: product.geoRegions?.map((region: any) => typeof region === 'object' ? { code: region.code, name: region.name, currency: region.currency } : region),
-    affiliateURL: product.affiliateUrl, sourceData: product.sourceData,
-  }
-  const research = await researchProduct(snapshot)
-  if (research.sources.length < 2 || !research.sources.some((source) => source.kind !== 'marketplace')) {
-    throw new Error(`Insufficient product evidence: ${research.warnings.join('; ') || 'no retrievable product or independent pages'}`)
-  }
   let feedback: string[] = []
   let lastQuality: QualityResult | undefined
   let lastError: string | undefined
@@ -228,7 +246,7 @@ async function run() {
   })
   if (!products.docs.length) throw new Error('No active products are available for article generation')
   const dayIndex = Math.floor(startedAt.getTime() / 86_400_000) % products.docs.length
-  const product = products.docs[dayIndex]
+  const { product, snapshot, research } = await findResearchableProduct(products.docs as Array<Record<string, any>>, dayIndex)
   const automationKey = `${date}:${product.id}`
   const existing = await payload.find({ collection: 'articles', where: { automationKey: { equals: automationKey } }, limit: 1 })
   if (existing.docs[0]) {
@@ -239,17 +257,6 @@ async function run() {
 
   const recent = await payload.find({ collection: 'articles', where: { status: { equals: 'published' } }, limit: 30, sort: '-publishedAt' })
   const recentTitles = recent.docs.map((article) => article.title)
-  const snapshot = {
-    id: product.id, name: product.name, slug: product.slug, shortDescription: product.shortDescription,
-    vendorName: product.vendorName, salesPageUrl: product.salesPageUrl, affiliateSupportPageUrl: product.affiliateSupportPageUrl,
-    pricing: product.pricing, features: product.features?.map((feature) => ({ title: feature.title, description: feature.description })),
-    regions: product.geoRegions?.map((region) => typeof region === 'object' ? { code: region.code, name: region.name, currency: region.currency } : region),
-    affiliateURL: product.affiliateUrl, sourceData: product.sourceData,
-  }
-  const research = await researchProduct(snapshot)
-  if (research.sources.length < 2 || !research.sources.some((source) => source.kind !== 'marketplace')) {
-    throw new Error(`Insufficient product evidence: ${research.warnings.join('; ') || 'no retrievable product or independent pages'}`)
-  }
   let feedback: string[] = []
   let lastQuality: QualityResult | undefined
   let usage: unknown
