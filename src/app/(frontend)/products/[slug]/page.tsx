@@ -5,7 +5,7 @@ import config from '@payload-config'
 import { ProductDescription } from '@/components/ProductDescription'
 import { ProductActions } from '@/components/ProductActions'
 import { ProductFacts } from '@/components/ProductFacts'
-import { getLanguage, getMessages, localeTag } from '@/lib/i18n'
+import { getLanguage, getMessages } from '@/lib/i18n'
 
 const countryToRegion: Record<string, string> = { AU:'au', CN:'cn', DE:'de', FR:'fr', GB:'uk', JP:'jp', US:'us' }
 
@@ -31,7 +31,7 @@ export default async function ProductRedirectPage({ params }: { params: Promise<
           <ProductActions slug={product.slug} title={product.name} labels={{ save: t.save, saved: t.saved, share: t.share, copied: t.copied }} />
           {product.marketplaceImageUrl ? <figure className="product-hero"><img src={product.marketplaceImageUrl} alt={`${product.name} product illustration`} /></figure> : null}
           <section className="product-overview"><h2>{t.overview}</h2>{product.description ? <ProductDescription data={product.description} /> : null}</section>
-          <ProductFacts product={product} locale={localeTag(language)} labels={{ title:t.details, vendor:t.vendor, commission:t.commission, billing:t.billing, conversion:t.conversion, cancellation:t.cancellation, earningsSale:t.earningsSale, earningsClick:t.earningsClick, approval:t.approval, automatic:t.automatic, manual:t.manual, updated:t.updated, resources:t.resources, salesPage:t.salesPage, promoMaterials:t.promoMaterials, metricNote:t.metricNote }} />
+          <ProductFacts product={product} labels={{ title:t.details, vendor:t.vendor, resources:t.resources, salesPage:t.salesPage }} />
         </article>
         <aside><div className="offer-box"><span className="eyebrow">{t.currentPrice}</span><div className="price">{product.pricing?.currency} {product.pricing?.amount}</div><p>{t.priceNote}</p><a className="button" href={product.affiliateUrl} target="_blank" rel="nofollow sponsored noopener noreferrer">{t.visit}</a><p style={{fontSize:'.8rem'}}>{t.affiliateNote}</p></div></aside>
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({ '@context':'https://schema.org', '@type':'Product', name:product.name, description:product.shortDescription, offers:{ '@type':'Offer', price:product.pricing?.amount, priceCurrency:product.pricing?.currency, availability:'https://schema.org/InStock', url:product.affiliateUrl } }).replace(/</g, '\\u003c') }} />

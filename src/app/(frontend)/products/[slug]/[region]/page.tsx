@@ -6,7 +6,7 @@ import config from '@payload-config'
 import { ProductDescription } from '@/components/ProductDescription'
 import { ProductActions } from '@/components/ProductActions'
 import { ProductFacts } from '@/components/ProductFacts'
-import { getLanguage, getMessages, localeTag } from '@/lib/i18n'
+import { getLanguage, getMessages } from '@/lib/i18n'
 
 type Props = { params: Promise<{ slug: string; region: string }> }
 
@@ -58,7 +58,7 @@ export default async function ProductRegionPage({ params }: Props) {
         <ProductActions slug={product.slug} title={name} labels={{ save: t.save, saved: t.saved, share: t.share, copied: t.copied }} />
         {product.marketplaceImageUrl ? <figure className="product-hero"><img src={product.marketplaceImageUrl} alt={`${name} product illustration`} /></figure> : null}
         <section className="product-overview"><h2>{t.overview}</h2>{description ? <ProductDescription data={description} /> : null}</section>
-        <ProductFacts product={product} locale={localeTag(language)} labels={{ title:t.details, vendor:t.vendor, commission:t.commission, billing:t.billing, conversion:t.conversion, cancellation:t.cancellation, earningsSale:t.earningsSale, earningsClick:t.earningsClick, approval:t.approval, automatic:t.automatic, manual:t.manual, updated:t.updated, resources:t.resources, salesPage:t.salesPage, promoMaterials:t.promoMaterials, metricNote:t.metricNote }} />
+        <ProductFacts product={product} labels={{ title:t.details, vendor:t.vendor, resources:t.resources, salesPage:t.salesPage }} />
         {product.features?.length ? <section><h2>{t.features}</h2><ul className="features">{product.features.map((feature) => <li key={feature.id || feature.title}><strong>{feature.title}</strong>{feature.description ? <div>{feature.description}</div> : null}</li>)}</ul></section> : null}
         <section><h2>{t.availableRegions}</h2><div className="regions">{product.geoRegions?.map((item) => typeof item === 'object' ? <Link key={item.id} href={`/products/${slug}/${item.code}`}>{item.code.toUpperCase()}</Link> : null)}</div></section>
       </article>
