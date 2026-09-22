@@ -17,7 +17,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${baseURL}/privacy`, changeFrequency: 'yearly', priority: 0.2 },
   ]
   for (const product of products.docs) {
-    for (const region of product.geoRegions || []) {
+    const regions = product.geoRegions || []
+    if (!regions.length) urls.push({ url: `${baseURL}/products/${product.slug}`, lastModified: new Date(product.updatedAt), changeFrequency: 'weekly', priority: 0.9 })
+    for (const region of regions) {
       if (typeof region !== 'object') continue
       urls.push({ url: `${baseURL}/products/${product.slug}/${region.code}`, lastModified: new Date(product.updatedAt), changeFrequency: 'weekly', priority: 0.9 })
     }
