@@ -60,7 +60,7 @@ export default async function ProductRegionPage({ params }: Props) {
         <p className="lede">{product.shortDescription}</p>
         <ProductActions slug={product.slug} title={name} labels={{ save: t.save, saved: t.saved, share: t.share, copied: t.copied }} />
         {product.marketplaceImageUrl ? <figure className="product-hero"><img src={product.marketplaceImageUrl} alt={`${name} product illustration`} /></figure> : null}
-        <section className="product-overview"><h2>{t.overview}</h2>{description ? <ProductDescription data={description} /> : null}</section>
+        <section className="product-overview"><h2>{t.overview}</h2>{description ? <ProductDescription data={description} affiliateUrl={product.affiliateUrl} /> : null}</section>
         <ProductFacts product={product} labels={{ title:t.details, vendor:t.vendor, resources:t.resources, salesPage:t.salesPage }} />
         <ProductDecisionSupport current={product} alternatives={support.alternatives} articles={support.articles} labels={{ compare:t.compare, compareIntro:t.compareIntro, current:t.currentChoice, alternative:t.alternative, viewDetails:t.viewDetails, guides:t.relatedGuides, guidesIntro:t.relatedGuidesIntro, readGuide:t.readGuide }} />
         {product.features?.length ? <section><h2>{t.features}</h2><ul className="features">{product.features.map((feature) => <li key={feature.id || feature.title}><strong>{feature.title}</strong>{feature.description ? <div>{feature.description}</div> : null}</li>)}</ul></section> : null}

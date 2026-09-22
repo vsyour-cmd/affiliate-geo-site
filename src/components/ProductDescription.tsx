@@ -11,13 +11,14 @@ function extractText(value: unknown): string {
   return `${ownText} ${childText}`.replace(/\s+/g, ' ').trim()
 }
 
-function linkedText(text: string): ReactNode[] {
+function linkedText(text: string, affiliateUrl?: string): ReactNode[] {
   const parts = text.split(/(https:\/\/[^\s]+)/g)
   return parts.filter(Boolean).map((part, index) => {
     if (!part.startsWith('https://')) return part
     const cleanURL = part.replace(/[),.;]+$/, '')
     const suffix = part.slice(cleanURL.length)
-    return <span key={`${cleanURL}-${index}`}><a href={cleanURL} target="_blank" rel="noopener noreferrer nofollow">{cleanURL}</a>{suffix}</span>
+    const destination = affiliateUrl || cleanURL
+    return <span key={`${cleanURL}-${index}`}><a href={destination} target="_blank" rel="noopener noreferrer nofollow sponsored">{destination}</a>{suffix}</span>
   })
 }
 
@@ -49,7 +50,7 @@ function countryLinks(text: string) {
   return links.length >= 2 ? { heading: headingMatch[1], links } : null
 }
 
-function ProductSection({ text, index }: { text: string; index: number }) {
+function ProductSection({ text, index, affiliateUrl }: { text: string; index: number; affiliateUrl?: string }) {
   const linkSection = countryLinks(text)
   if (linkSection) {
     return (
@@ -57,7 +58,7 @@ function ProductSection({ text, index }: { text: string; index: number }) {
         <div className="product-copy-index" aria-hidden="true">{String(index).padStart(2, '0')}</div>
         <div className="product-copy-content">
           <h3>{linkSection.heading}</h3>
-          <ul className="product-link-list">{linkSection.links.map((link) => <li key={link.url}><span>{link.label}</span><a href={link.url} target="_blank" rel="noopener noreferrer nofollow">Open link ↗</a></li>)}</ul>
+          <ul className="product-link-list">{linkSection.links.map((link) => <li key={link.url}><span>{link.label}</span><a href={affiliateUrl || link.url} target="_blank" rel="noopener noreferrer nofollow sponsored">Open link ↗</a></li>)}</ul>
         </div>
       </section>
     )
@@ -73,23 +74,23 @@ function ProductSection({ text, index }: { text: string; index: number }) {
       <div className="product-copy-index" aria-hidden="true">{String(index).padStart(2, '0')}</div>
       <div className="product-copy-content">
         <h3>{heading}</h3>
-        {body ? <p>{linkedText(body)}</p> : null}
-        {parts.length > 1 ? <ul className="product-fact-list">{parts.slice(1).map((item, itemIndex) => <li key={`${item.slice(0, 40)}-${itemIndex}`}>{linkedText(item.replace(/^\d+\.\s*/, ''))}</li>)}</ul> : null}
+        {body ? <p>{linkedText(body, affiliateUrl)}</p> : null}
+        {parts.length > 1 ? <ul className="product-fact-list">{parts.slice(1).map((item, itemIndex) => <li key={`${item.slice(0, 40)}-${itemIndex}`}>{linkedText(item.replace(/^\d+\.\s*/, ''), affiliateUrl)}</li>)}</ul> : null}
       </div>
     </section>
   )
 }
 
-export function ProductDescription({ data }: { data: unknown }) {
+export function ProductDescription({ data, affiliateUrl }: { data: unknown; affiliateUrl?: string }) {
   const text = extractText(data)
   if (!text) return null
   const sections = text.split(/\s+---\s+/).map((item) => item.trim()).filter(Boolean)
-  if (sections.length === 1) return <div className="product-copy"><p className="product-copy-intro">{linkedText(text)}</p></div>
+  if (sections.length === 1) return <div className="product-copy"><p className="product-copy-intro">{linkedText(text, affiliateUrl)}</p></div>
 
   return (
     <div className="product-copy">
-      <p className="product-copy-intro">{linkedText(sections[0])}</p>
-      {sections.slice(1).map((section, index) => <ProductSection key={`${section.slice(0, 40)}-${index}`} text={section} index={index + 1} />)}
+      <p className="product-copy-intro">{linkedText(sections[0], affiliateUrl)}</p>
+      {sections.slice(1).map((section, index) => <ProductSection key={`${section.slice(0, 40)}-${index}`} text={section} index={index + 1} affiliateUrl={affiliateUrl} />)}
     </div>
   )
 }
