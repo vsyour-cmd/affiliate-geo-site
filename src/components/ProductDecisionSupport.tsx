@@ -29,7 +29,7 @@ type Labels = {
 
 function ProductVisual({ product }: { product: ComparisonProduct }) {
   return product.marketplaceImageUrl
-    ? <img src={product.marketplaceImageUrl} alt="" loading="lazy" />
+    ? <img src={product.marketplaceImageUrl} alt={`${product.name} product image`} loading="lazy" />
     : <span aria-hidden="true">{product.name.slice(0, 1)}</span>
 }
 
@@ -41,10 +41,12 @@ export function ProductDecisionSupport({ current, alternatives, articles, labels
       <div className="comparison-grid">
         {comparison.map((product, index) => <article className={index === 0 ? 'comparison-card is-current' : 'comparison-card'} key={product.id}>
           <div className="comparison-media"><ProductVisual product={product} /></div>
-          <span className="comparison-label">{index === 0 ? labels.current : labels.alternative}</span>
-          <h3>{product.name}</h3>
-          <p>{product.shortDescription}</p>
-          <div className="comparison-footer"><strong>{product.pricing?.currency} {product.pricing?.amount}</strong><Link href={`/products/${product.slug}`}>{labels.viewDetails} →</Link></div>
+          <div className="comparison-content">
+            <span className="comparison-label">{index === 0 ? labels.current : labels.alternative}</span>
+            <h3>{product.name}</h3>
+            <p>{product.shortDescription}</p>
+            <div className="comparison-footer"><strong>{product.pricing?.currency} {product.pricing?.amount}</strong><Link href={`/products/${product.slug}`}>{labels.viewDetails} →</Link></div>
+          </div>
         </article>)}
       </div>
     </section> : null}
