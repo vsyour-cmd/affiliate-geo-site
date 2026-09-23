@@ -1,6 +1,7 @@
 import fs from 'fs/promises'
 import path from 'path'
 import { researchProduct } from './research-product'
+import { GEO_OPTIMIZE_PROMPT } from '../src/lib/geo-prompts'
 
 type ProductEnrichment = {
   summary: string
@@ -67,7 +68,7 @@ async function generate(product: Record<string, unknown>, evidence: Awaited<Retu
     body: JSON.stringify({
       model,
       messages: [
-        { role: 'system', content: 'Return JSON only. Create factual product-page content using only the supplied marketplace and official-provider evidence. Never invent capabilities, results, discounts, guarantees, endorsements, or customer counts. Clearly frame vendor claims. Do not include citation markers such as [S1] in product fields. Produce summary (80-160 characters), overview (2-4 paragraphs), features (4-8 title/description objects), idealFor (2-6 items), and limitations (2-6 items). Each feature description must be 40-400 characters.' },
+        { role: 'system', content: `Return JSON only. Create factual product-page content using only the supplied marketplace and official-provider evidence. Never invent capabilities, results, discounts, guarantees, endorsements, customer counts, studies, statistics, institutions, tests, or author credentials. Clearly distinguish vendor claims from verified facts. Do not include citation markers such as [S1] in product fields.\n\n${GEO_OPTIMIZE_PROMPT}\n\nProduce summary (80-160 characters), overview (2-4 self-contained paragraphs), features (4-8 title/description objects), idealFor (2-6 items), and limitations (2-6 items). Each feature description must be 40-400 characters. Use evidence-aligned product, vendor, feature, audience, and pricing terminology. Begin each overview paragraph with its main factual answer and keep every item independently understandable.` },
         { role: 'user', content: `PRODUCT=${JSON.stringify(product)}\nEVIDENCE=${JSON.stringify(evidence)}` },
       ],
       response_format: { type: 'json_object' }, thinking: { type: 'disabled' }, max_tokens: 3_500, temperature: 0.3, stream: false,
