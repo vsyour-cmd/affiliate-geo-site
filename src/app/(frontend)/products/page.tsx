@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { getPayload } from 'payload'
 import config from '@payload-config'
 import { getLanguage, getMessages } from '@/lib/i18n'
+import { productImageSrc } from '@/lib/product-image'
 
 export const metadata: Metadata = { title: 'Products', description: 'Browse all active product recommendations.' }
 export const dynamic = 'force-dynamic'
@@ -40,7 +41,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
       <div className="results-summary" aria-live="polite"><strong>{products.totalDocs.toLocaleString()}</strong> {t.results}</div>
       {products.docs.length ? <div className="grid">{products.docs.map((product) => (
         <Link className="card" href={`/products/${product.slug}`} key={product.id}>
-          {product.marketplaceImageUrl ? <div className="card-media"><img src={product.marketplaceImageUrl} alt="" loading="lazy" /></div> : <div className="card-media card-media-fallback" aria-hidden="true"><span>{product.name.slice(0, 1)}</span></div>}
+          {productImageSrc(product.marketplaceImageUrl) ? <div className="card-media"><img src={productImageSrc(product.marketplaceImageUrl)} alt="" loading="lazy" /></div> : <div className="card-media card-media-fallback" aria-hidden="true"><span>{product.name.slice(0, 1)}</span></div>}
           <h2>{product.name}</h2><p>{product.shortDescription}</p>
           <span className="price">{product.pricing?.currency} {product.pricing?.amount}</span>
         </Link>

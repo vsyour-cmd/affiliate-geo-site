@@ -9,6 +9,7 @@ import { ProductFacts } from '@/components/ProductFacts'
 import { ProductDecisionSupport } from '@/components/ProductDecisionSupport'
 import { getLanguage, getMessages } from '@/lib/i18n'
 import { loadProductSupport } from '@/lib/product-support'
+import { productImageSrc } from '@/lib/product-image'
 
 type Props = { params: Promise<{ slug: string; region: string }> }
 
@@ -59,7 +60,7 @@ export default async function ProductRegionPage({ params }: Props) {
         <h1 style={{fontSize:'clamp(2.5rem,6vw,4.5rem)'}}>{name}</h1>
         <p className="lede">{product.shortDescription}</p>
         <ProductActions slug={product.slug} title={name} labels={{ save: t.save, saved: t.saved, share: t.share, copied: t.copied }} />
-        {product.marketplaceImageUrl ? <figure className="product-hero"><img src={product.marketplaceImageUrl} alt={`${name} product illustration`} /></figure> : null}
+        {productImageSrc(product.marketplaceImageUrl) ? <figure className="product-hero"><img src={productImageSrc(product.marketplaceImageUrl)} alt={`${name} product illustration`} /></figure> : null}
         <section className="product-overview"><h2>{t.overview}</h2>{description ? <ProductDescription data={description} affiliateUrl={product.affiliateUrl} /> : null}</section>
         <ProductFacts product={product} labels={{ title:t.details, vendor:t.vendor, resources:t.resources, salesPage:t.salesPage }} />
         <ProductDecisionSupport current={product} alternatives={support.alternatives} articles={support.articles} labels={{ compare:t.compare, compareIntro:t.compareIntro, current:t.currentChoice, alternative:t.alternative, viewDetails:t.viewDetails, guides:t.relatedGuides, guidesIntro:t.relatedGuidesIntro, readGuide:t.readGuide }} />

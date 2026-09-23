@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { productImageSrc } from '@/lib/product-image'
 
 type ComparisonProduct = {
   id: number
@@ -28,8 +29,9 @@ type Labels = {
 }
 
 function ProductVisual({ product }: { product: ComparisonProduct }) {
-  return product.marketplaceImageUrl
-    ? <img src={product.marketplaceImageUrl} alt={`${product.name} product image`} loading="lazy" />
+  const imageSrc = productImageSrc(product.marketplaceImageUrl)
+  return imageSrc
+    ? <img src={imageSrc} alt={`${product.name} product image`} loading="lazy" />
     : <span aria-hidden="true">{product.name.slice(0, 1)}</span>
 }
 
